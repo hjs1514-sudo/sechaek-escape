@@ -468,3 +468,49 @@ input, textarea { font: inherit; }
   .board { padding: 12px 16px 32px; }
   .team-grid { grid-template-columns: 1fr; }
 }
+
+.jig-tile { position: relative; }
+.jig-tile.placed::after { content: ''; position: absolute; right: 6px; bottom: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--lantern); box-shadow: 0 0 0 2px rgba(14,18,27,.75); }
+.jig-count { margin: 4px 0 0; font-size: .95rem; color: var(--hanji); text-align: center; }
+.jig-count b { color: var(--lantern); font-variant-numeric: tabular-nums; }
+.jig-count span { color: #cbbd9c; }
+
+/* ===== 숨겨진 서고 창고 ===== */
+.spot.secret { width: clamp(150px, 16vw, 210px); animation: rise .8s ease-out both; }
+.spot.secret .chest { aspect-ratio: 520 / 415; border: 3px solid #5a4028; border-radius: 6px; overflow: hidden; box-shadow: 0 0 30px rgba(242,181,68,.55); }
+.spot.secret .chest img { object-fit: cover; object-position: center; }
+.spot.secret.done .chest { box-shadow: 0 0 34px rgba(255,190,90,.95); }
+@keyframes rise { from { opacity: 0; transform: translate(-50%, -40%) scale(.9); } to { opacity: 1; transform: translate(-50%, -50%); } }
+.reveal { width: min(760px, 100%); background: #10141e; border: 1px solid rgba(242,181,68,.5); border-radius: 14px; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,.6); animation: pop .5s ease-out; }
+.reveal img { display: block; width: 100%; height: auto; }
+.reveal-text { padding: 20px 24px 22px; display: flex; flex-direction: column; gap: 10px; }
+.reveal-kicker { color: var(--lantern); font-weight: 700; font-size: .9rem; letter-spacing: .04em; }
+.reveal h3 { margin: 0; font-family: var(--serif); font-size: clamp(1.2rem, 2.6vw, 1.6rem); text-wrap: balance; }
+.reveal p { margin: 0; color: #cbbd9c; }
+.scene-progress { margin-left: auto; background: rgba(10,12,18,.75); border: 1px solid var(--line); border-radius: 18px; padding: 6px 14px; font-size: .92rem; }
+.scene-progress b { color: var(--lantern); }
+.scene-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.scene { position: relative; width: min(100%, calc((100vh - 190px) * 995 / 848)); aspect-ratio: 995 / 848; background-size: cover; background-position: center; border: 6px solid #3a2a1c; border-radius: 6px; box-shadow: 0 20px 50px rgba(0,0,0,.6); }
+.clue-spot, .lantern-spot { position: absolute; transform: translate(-50%, -50%); background: none; border: 0; padding: 0; cursor: pointer; color: #2a1a0a; }
+.clue-ring { display: grid; place-items: center; width: clamp(44px, 5.4vw, 60px); height: clamp(44px, 5.4vw, 60px); border-radius: 50%; background: radial-gradient(circle, #ffd27a 0%, #f2b544 55%, rgba(242,181,68,.25) 100%); box-shadow: 0 0 0 4px rgba(242,181,68,.35), 0 0 28px 8px rgba(255,190,90,.65); animation: clue-glow 1.8s ease-in-out infinite; }
+.clue-spot.done .clue-ring { background: radial-gradient(circle, #cfe8c6 0%, #7fb38a 70%); box-shadow: 0 0 0 4px rgba(127,179,138,.35); animation: none; }
+@keyframes clue-glow { 50% { box-shadow: 0 0 0 8px rgba(242,181,68,.15), 0 0 40px 14px rgba(255,190,90,.8); } }
+.clue-label { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%); white-space: nowrap; background: rgba(10,12,18,.85); color: var(--hanji); border: 1px solid var(--line); border-radius: 10px; padding: 4px 10px; font-size: .85rem; font-weight: 700; display: flex; flex-direction: column; align-items: center; line-height: 1.35; }
+.clue-label small { color: var(--lantern); font-weight: 500; font-size: .75rem; }
+.clue-spot:hover .clue-ring, .clue-spot:focus-visible .clue-ring { transform: scale(1.08); }
+.clue-spot:focus-visible { outline: none; }
+.clue-spot:focus-visible .clue-ring { outline: 3px solid #fff; outline-offset: 3px; }
+.lantern-spot { width: 46px; height: 60px; }
+.lantern-ring { display: block; width: 100%; height: 100%; border-radius: 50%; }
+.lantern-spot:hover .lantern-ring, .lantern-spot:focus-visible .lantern-ring { box-shadow: 0 0 30px 10px rgba(255,200,110,.6); }
+.scene-tip { margin: 0; color: #cbbd9c; font-size: .95rem; text-align: center; }
+.small-note-paper { width: min(620px, 100%); display: flex; flex-direction: column; gap: 14px; align-items: flex-start; font-size: clamp(1rem, 2vw, 1.15rem); line-height: 1.8; }
+.slots { grid-template-columns: repeat(5, 1fr); }
+@media (max-width: 600px) { .slots { grid-template-columns: repeat(3, 1fr); } .clue-label { font-size: .75rem; } }
+@media (prefers-reduced-motion: reduce) { .clue-ring, .spot.secret { animation: none; } }
+[hidden] { display: none !important; }
+
+.map.compact .spot:not(.secret) { width: clamp(110px, 12vw, 160px); }
+.map.compact .spot:not(.secret) .spot-label { min-width: 0; padding: 6px 14px 8px; }
+.map.compact .spot:not(.secret) .spot-label strong { font-size: .95rem; }
+.map.compact .key-chip { font-size: .72rem; }

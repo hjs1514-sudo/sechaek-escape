@@ -10,9 +10,20 @@ export function RoomIcon({ kind, size = 28 }) {
   if (kind === 'mask') return (
     <svg {...p}><ellipse cx="16" cy="16" rx="10" ry="12" /><path d="M10 13q2-2 4 0M18 13q2-2 4 0" /><path d="M11 20q5 5 10 0" /></svg>
   );
+  if (kind === 'door') return (
+    <svg {...p}><path d="M7 29V5h18v24" /><path d="M4 29h24" /><path d="M7 5l11 3v21" /><circle cx="15" cy="18" r="1" fill="currentColor" /></svg>
+  );
   return (
     <svg {...p}><path d="M2 27 11 11l5 8 4-6 10 14z" /><path d="M11 11l-2 6M20 13l-1 4" /></svg>
   );
+}
+
+export function ClueIcon({ kind }) {
+  const q = { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true };
+  if (kind === 'check') return <svg {...q}><path d="M5 12.5 10 17l9-10" /></svg>;
+  if (kind === 'scroll') return <svg {...q}><path d="M7 4h11a2 2 0 0 1 0 4H9" /><path d="M7 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8" /><path d="M9 12h6M9 16h4" /></svg>;
+  if (kind === 'box') return <svg {...q}><rect x="3" y="8" width="18" height="12" rx="1" /><path d="M3 8l2-4h14l2 4" /><path d="M10 12h4" /></svg>;
+  return <svg {...q}><path d="M4 5h6a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4z" /><path d="M20 5h-6a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h6z" /></svg>;
 }
 
 const sm = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true };

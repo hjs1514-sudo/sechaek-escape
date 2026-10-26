@@ -213,12 +213,12 @@ function TeamCard({ t, onOpen, onAdd }) {
       </header>
       <div className="team-stats">
         <div><small>남은 시간</small><b className={s.left !== null && s.left < 5 * 60000 ? 'noc' : ''}>{s.left !== null ? fmtTime(s.left) : s.status === 'escaped' && s.g.escapedAt ? fmtTime(s.g.escapedAt - s.g.startedAt) : '-'}</b></div>
-        <div><small>열쇠</small><b>{s.keys}/4</b></div>
+        <div><small>열쇠</small><b>{s.keys}/{ROOMS.length}</b></div>
         <div><small>퍼즐</small><b>{s.solved}/{PUZZLES.length}</b></div>
         <div><small>오답</small><b>{s.wrong}</b></div>
         <div><small>힌트</small><b>{s.hints}</b></div>
       </div>
-      <div className="cells">
+      <div className="cells" style={{ gridTemplateColumns: `repeat(${ROOMS.length}, 1fr)` }}>
         {ROOMS.map((r) => (
           <div key={r.id} className="cell-room" title={r.name}>
             {r.puzzles.map((p) => {

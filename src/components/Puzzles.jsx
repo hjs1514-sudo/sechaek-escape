@@ -208,13 +208,18 @@ export function Jigsaw({ step, onResult, locked }) {
             ? { backgroundImage: `url(sources/${meta.file})`, backgroundSize: `${n * 100}% ${n * 100}%`, backgroundPosition: `${(cx / (n - 1)) * 100}% ${(cy / (n - 1)) * 100}%` }
             : {};
           return (
-            <button key={k} data-v={v} className={`jig-tile ${sel === k ? 'sel' : ''} ${ok ? '' : 'num'}`} style={style} onClick={() => tapTile(k)}>
+            <button key={k} data-v={v} className={`jig-tile ${sel === k ? 'sel' : ''} ${ok ? '' : 'num'} ${v === k && !solved ? 'placed' : ''}`} style={style} onClick={() => tapTile(k)} aria-label={`조각 ${k + 1}${v === k ? ' (제자리)' : ''}`}>
               {!ok && v + 1}
             </button>
           );
         })}
       </div>
-      {solved && <p className="good">그림이 완성되었어요!</p>}
+      {solved ? <p className="good">그림이 완성되었어요!</p> : (
+        <p className="jig-count">
+          제자리에 놓인 조각 <b>{tiles.filter((v, i) => v === i).length}</b> / {n * n}
+          {tiles.filter((v, i) => v === i).length >= n * n - 2 && <span> · 거의 다 됐어요! 비슷해 보이는 조각끼리 바꿔 보세요.</span>}
+        </p>
+      )}
     </div>
   );
 }

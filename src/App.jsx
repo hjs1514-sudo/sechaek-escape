@@ -4,12 +4,14 @@ import { useGame, useSettings, useNow, ensurePuzzle, fmtTime } from './lib/store
 import { GlossProvider, T, SunBar, SourceCard, Zoom, PinModal, StepWords } from './components/common.jsx';
 import { Step } from './components/Puzzles.jsx';
 import Teacher from './Teacher.jsx';
-import { RoomIcon, HomeIcon, LockIcon } from './components/icons.jsx';
+import { RoomIcon, HomeIcon, LockIcon, ClueIcon } from './components/icons.jsx';
 import { QrCard } from './components/QrCard.jsx';
 import Board from './Board.jsx';
 import { getClass, newTeamId, useSync } from './lib/api.js';
 
 const roomDone = (game, r) => !!game.rooms[r.id]?.done;
+const MAIN_ROOMS = ROOMS.filter((r) => !r.hidden);
+const TOTAL_PUZZLES = ROOMS.reduce((n, r) => n + r.puzzles.length, 0);
 
 export default function App() {
   const [hash, setHash] = useState(location.hash);
@@ -48,6 +50,14 @@ function Game() {
 
   const keys = ROOMS.filter((r) => roomDone(game, r));
   const room = ROOMS.find((r) => r.id === roomId);
+  const mainDone = MAIN_ROOMS.every((r) => roomDone(game, r));
+  const keysNeeded = mainDone ? ROOMS.length : MAIN_ROOMS.length;
+  const [startPid, setStartPid] = useState(null);
+  const openRoom = (id) => {
+    const r = ROOMS.find((x) => x.id === id);
+    setRoomId(id);
+    setScreen(r?.hidden ? 'scene' : 'room');
+  };
 
   const afterIntro = () => setScreen(game.startedAt ? 'map' : 'join');
   let body;
@@ -69,12 +79,24 @@ function Game() {
       }}
     />
   );
+  else if (screen === 'scene' && room) body = (
+    <Scene
+      room={room}
+      game={game}
+      onBack={() => setScreen('map')}
+      onPick={(pid) => { setStartPid(pid); setScreen('room'); }}
+      onRecord={() => setRecordOf(room.id)}
+    />
+  );
   else if (screen === 'room' && room) body = (
     <Room
+      key={`${room.id}-${startPid || ''}`}
       room={room}
       game={game}
       update={update}
-      onBack={() => setScreen('map')}
+      startPid={room.hidden ? startPid : null}
+      sceneMode={!!room.hidden}
+      onBack={() => setScreen(room.hidden ? 'scene' : 'map')}
       onDone={() => { setRecordOf(room.id); setScreen('map'); }}
     />
   );
@@ -83,7 +105,9 @@ function Game() {
     <MapScreen
       game={game}
       keys={keys}
-      onRoom={(id) => { setRoomId(id); setScreen('room'); }}
+      onRoom={openRoom}
+      update={update}
+      mainDone={mainDone}
       onGate={() => setScreen('gate')}
       onRecord={setRecordOf}
     />
@@ -98,7 +122,7 @@ function Game() {
           {game.startedAt && (
             <div className="team">
               {game.classCode && <i className={`sync-dot ${sync}`} title={sync === 'error' ? '진행판에 연결이 끊겼어요. 게임은 계속돼요.' : '진행판에 연결됨'} />}
-              {game.team} <span className="keys">열쇠 {keys.length}/4</span>
+              {game.team} <span className="keys">열쇠 {keys.length}/{keysNeeded}</span>
             </div>
           )}
           <nav className="topnav" aria-label="화면 이동">
@@ -226,45 +250,113 @@ function Join({ onJoin }) {
 
 // ---------- 세책점 지도 ----------
 const SPOTS = { silhak: [20, 48], geumseo: [43, 36], jangteo: [80, 48], sansu: [60, 70] };
-function MapScreen({ game, keys, onRoom, onGate, onRecord }) {
-  const all = keys.length === 4;
+const SPOTS_SECRET = { silhak: [15, 40], geumseo: [40, 34], jangteo: [85, 40], sansu: [63, 60], seogo: [26, 76] };
+function MapScreen({ game, keys, onRoom, onGate, onRecord, update, mainDone }) {
+  const secret = ROOMS.find((r) => r.hidden);
+  const secretDone = roomDone(game, secret);
+  const all = keys.length === ROOMS.length;
+  const showReveal = mainDone && !game.secretSeen;
+  const shown = ROOMS.filter((r) => !r.hidden || mainDone);
   return (
-    <section className="map" style={{ backgroundImage: 'url(art/map.webp)' }}>
+    <section className={`map ${mainDone ? 'compact' : ''}`} style={{ backgroundImage: 'url(art/map.webp)' }}>
       <div className="map-shade" />
       <div className="map-guide">
         <img src="art/strip_clue.webp" alt="단서는 모두 이 상자들 안에 있다" />
-        <span>상자를 골라 들어가세요. 어떤 순서로 열어도 돼요.</span>
+        <span>{mainDone ? '책장 뒤에 숨겨진 서고 창고가 열렸어요.' : '상자를 골라 들어가세요. 어떤 순서로 열어도 돼요.'}</span>
       </div>
-      {ROOMS.map((r) => {
+      {shown.map((r) => {
         const done = roomDone(game, r);
         const solved = Object.values(game.rooms[r.id]?.puzzles || {}).filter((p) => p.done).length;
-        const [x, y] = SPOTS[r.id];
+        const [x, y] = (mainDone ? SPOTS_SECRET : SPOTS)[r.id];
         return (
-          <div key={r.id} className={`spot ${done ? 'done' : ''}`} style={{ left: `${x}%`, top: `${y}%` }}>
+          <div key={r.id} className={`spot ${done ? 'done' : ''} ${r.hidden ? 'secret' : ''}`} style={{ left: `${x}%`, top: `${y}%` }}>
             <button className="chest" onClick={() => onRoom(r.id)}>
-              <img src={done ? 'art/chest_open.webp' : r.chest} alt={`${r.name} 상자${done ? ' (열림)' : ''}`} />
+              <img src={r.hidden ? r.chest : done ? 'art/chest_open.webp' : r.chest} alt={`${r.name}${done ? ' (열림)' : ''}`} />
             </button>
             <div className="spot-label">
-              <small>{r.no}방</small>
+              <small>{r.hidden ? '숨겨진 방' : `${r.no}방`}</small>
               <strong>{r.name}</strong>
               <span className="dots">{r.puzzles.map((p, i) => <i key={i} className={i < solved ? 'on' : ''} />)}</span>
-              {done && <button className="key-chip" onClick={() => onRecord(r.id)}>열쇠 「{r.keyWord}」 · 기록 보기</button>}
+              {done && <button className="key-chip" onClick={() => onRecord(r.id)}>{mainDone ? `「${r.keyWord}」 기록` : `열쇠 「${r.keyWord}」 · 기록 보기`}</button>}
             </div>
           </div>
         );
       })}
       <button className={`gate-btn ${all ? 'ready' : ''}`} onClick={onGate} disabled={!all}>
-        {all ? '대문으로 가기' : `대문: 열쇠 ${keys.length}/4`}
+        {all ? '대문으로 가기' : mainDone && !secretDone ? `대문: 열쇠 ${keys.length}/${ROOMS.length} · 숨겨진 창고를 살펴보세요` : `대문: 열쇠 ${keys.length}/${mainDone ? ROOMS.length : MAIN_ROOMS.length}`}
       </button>
+      {showReveal && (
+        <div className="modal-back">
+          <div className="reveal">
+            <img src="art/seogo_corridor.webp" alt="책장 사이로 이어진 어두운 통로" />
+            <div className="reveal-text">
+              <div className="reveal-kicker">네 개의 열쇠가 모두 모였다</div>
+              <h3>책장이 스르륵 밀려나며, 숨겨진 서고 창고가 나타났다</h3>
+              <p>대문을 열려면 다섯 번째 열쇠가 필요하다. 등불이 비추는 창고 안을 살펴보자.</p>
+              <div className="row">
+                <button className="btn" onClick={() => { update((g) => { g.secretSeen = true; return g; }); onRoom(secret.id); }}>창고로 들어가기</button>
+                <button className="btn ghost" onClick={() => update((g) => { g.secretSeen = true; return g; })}>지도 먼저 보기</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ---------- 숨겨진 서고 창고: 장면 속 단서 ----------
+function Scene({ room, game, onBack, onPick, onRecord }) {
+  const [note, setNote] = useState(!game.rooms[room.id]);
+  const done = (pid) => !!game.rooms[room.id]?.puzzles?.[pid]?.done;
+  const solved = room.puzzles.filter((p) => done(p.id)).length;
+  const allDone = roomDone(game, room);
+  return (
+    <section className="room scene-room" >
+      {/* 배경 주소를 CSS 변수로 넘기면 빌드 후 assets/ 기준으로 풀려 그림이 안 나오므로 바로 지정 */}
+      <div className="room-bg" style={{ backgroundImage: `url(${room.bg})` }} />
+      <div className="room-head">
+        <button className="btn ghost small" onClick={onBack}>← 지도</button>
+        <h2><span>숨겨진 방</span> {room.name}</h2>
+        <div className="scene-progress">찾은 단서 <b>{solved}</b> / {room.puzzles.length}</div>
+      </div>
+      <div className="scene-wrap">
+        <div className="scene" style={{ backgroundImage: `url(${room.scene})` }}>
+          <button className="lantern-spot" style={{ left: `${room.lantern.x}%`, top: `${room.lantern.y}%` }} onClick={() => setNote(true)} aria-label="등불 옆 쪽지 읽기">
+            <span className="lantern-ring" />
+          </button>
+          {room.spots.map((s) => {
+            const p = room.puzzles.find((q) => q.id === s.puzzle);
+            const d = done(s.puzzle);
+            return (
+              <button key={s.puzzle} className={`clue-spot ${d ? 'done' : ''}`} style={{ left: `${s.x}%`, top: `${s.y}%` }} onClick={() => onPick(s.puzzle)}>
+                <span className="clue-ring"><ClueIcon kind={d ? 'check' : s.icon} /></span>
+                <span className="clue-label">{s.label}<small>{d ? `열쇠 조각 「${p.piece}」` : p.title}</small></span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="scene-tip">{allDone ? '세 단서를 모두 찾았어요. 다섯 번째 열쇠 「' + room.keyWord + '」를 얻었습니다.' : '빛나는 곳을 누르면 단서를 살펴볼 수 있어요. 등불을 누르면 주인의 쪽지를 다시 읽어요.'}</p>
+        {allDone && <button className="btn" onClick={onRecord}>세책점 주인의 기록 보기</button>}
+      </div>
+      {note && (
+        <div className="modal-back" onClick={() => setNote(false)}>
+          <div className="note-paper small-note-paper" style={{ backgroundImage: 'url(art/paper.webp)' }} onClick={(e) => e.stopPropagation()}>
+            <p><T>{room.intro}</T></p>
+            <button className="btn" onClick={() => setNote(false)}>창고 살펴보기</button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
 
 // ---------- 방 ----------
-function Room({ room, game, update, onBack, onDone }) {
+function Room({ room, game, update, onBack, onDone, startPid = null, sceneMode = false }) {
   const rs = game.rooms[room.id];
   const firstOpen = room.puzzles.findIndex((p) => !rs?.puzzles?.[p.id]?.done);
-  const [pi, setPi] = useState(firstOpen === -1 ? 0 : firstOpen);
+  const startIdx = startPid ? room.puzzles.findIndex((p) => p.id === startPid) : -1;
+  const [pi, setPi] = useState(startIdx >= 0 ? startIdx : firstOpen === -1 ? 0 : firstOpen);
   const puzzle = room.puzzles[pi];
   const ps = rs?.puzzles?.[puzzle.id];
   const stepIdx = ps?.done ? puzzle.steps.length - 1 : ps?.step || 0;
@@ -300,7 +392,7 @@ function Room({ room, game, update, onBack, onDone }) {
   const afterPiece = () => {
     setPiece(null);
     const next = room.puzzles.findIndex((p, i) => i !== pi && !game.rooms[room.id]?.puzzles?.[p.id]?.done);
-    if (next === -1) onDone(); else setPi(next);
+    if (next === -1) onDone(); else if (sceneMode) onBack(); else setPi(next);
   };
 
   const openHint = () => {
@@ -316,10 +408,10 @@ function Room({ room, game, update, onBack, onDone }) {
       {/* 배경 주소를 CSS 변수로 넘기면 빌드 후 assets/ 기준으로 풀려 그림이 안 나오므로 바로 지정 */}
       <div className="room-bg" style={{ backgroundImage: `url(${room.bg})` }} />
       <div className="room-head">
-        <button className="btn ghost small" onClick={onBack}>← 지도</button>
+        <button className="btn ghost small" onClick={onBack}>{sceneMode ? '← 창고' : '← 지도'}</button>
         <img className="room-chest" src={room.chest} alt="" />
-        <h2><span>{room.no}방</span> {room.name}</h2>
-        <div className="tabs">
+        <h2><span>{room.hidden ? '숨겨진 방' : `${room.no}방`}</span> {sceneMode ? puzzle.title : room.name}</h2>
+        <div className="tabs" hidden={sceneMode}>
           {room.puzzles.map((p, i) => {
             const d = rs?.puzzles?.[p.id]?.done;
             return (
@@ -480,7 +572,7 @@ function Summary({ game }) {
   return (
     <div className="summary">
       <div><b>{fmtTime(used)}</b><span>걸린 시간</span></div>
-      <div><b>{st.solved}/12</b><span>푼 퍼즐</span></div>
+      <div><b>{st.solved}/{TOTAL_PUZZLES}</b><span>푼 퍼즐</span></div>
       <div><b>{st.hints}</b><span>힌트</span></div>
     </div>
   );
