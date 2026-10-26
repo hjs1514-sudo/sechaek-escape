@@ -28,7 +28,7 @@ export default function Teacher() {
     return (
       <div className="teacher-gate">
         <PinModal title="교사 화면" pin={settings.pin} onOk={() => setAuthed(true)} onCancel={() => (location.hash = '')}>
-          <p>처음 PIN은 1860이에요. 들어가서 바꿀 수 있어요.</p>
+          <p>교사 PIN을 입력해야 들어갈 수 있어요.</p>
         </PinModal>
       </div>
     );

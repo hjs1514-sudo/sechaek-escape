@@ -45,8 +45,10 @@ function Game() {
   if (game.outcome === 'caught') return <Caught game={game} settings={settings} update={update} onRecord={setRecordOf} recordOf={recordOf} />;
 
   let body;
-  if (screen === 'cover') body = <Cover onStart={() => setScreen('intro')} onSkip={() => setScreen('join')} />;
-  else if (screen === 'intro') body = <Intro onDone={() => setScreen('join')} />;
+  // 이미 입장한 모둠은 첫 화면에서 다시 들어가도 입장 화면을 건너뛰고 하던 곳(지도)으로 돌아간다
+  const enter = () => setScreen(game.startedAt ? 'map' : 'join');
+  if (screen === 'cover') body = <Cover onStart={() => setScreen('intro')} onSkip={enter} />;
+  else if (screen === 'intro') body = <Intro onDone={enter} />;
   else if (screen === 'join') body = (
     <Join
       onJoin={(team, klass) => {
@@ -81,11 +83,15 @@ function Game() {
 
   return (
     <div className="app">
-      {running && screen !== 'intro' && (
+      {running && screen !== 'intro' && screen !== 'cover' && (
         <header className="topbar">
           <div className="brand">1860 · 한양 세책점의 비밀</div>
           <SunBar left={left} total={total} />
           <div className="team">{game.team} <span className="keys">열쇠 {keys.length}/4</span></div>
+          <div className="top-actions">
+            <button className="btn ghost small" onClick={() => setScreen('cover')}>첫 화면으로</button>
+            <a className="btn ghost small" href="#/teacher">교사 화면으로</a>
+          </div>
         </header>
       )}
       {body}
