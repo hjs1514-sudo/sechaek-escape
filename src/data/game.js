@@ -48,8 +48,8 @@ export const GLOSSARY = {
 export const SOURCE_FILES = {
   geojunggi: { file: 'geojunggi.jpg', label: '『화성성역의궤』 「거중기전도」' },
   ssireum: { file: 'ssireum.jpg', label: '김홍도, 「씨름」' },
-  idealLandscape: { file: 'ideal_landscape.jpg', label: '중국풍 관념 산수화 한 점 (예: 안견 「몽유도원도」)' },
-  geumgang: { file: 'geumgang.jpg', label: '정선, 「금강전도」' },
+  idealLandscape: { file: 'ideal_landscape.jpg', label: '중국풍 관념 산수화' },
+  geumgang: { file: 'geumgang.jpg', label: '정선, 「금강내산총도」' },
   inwang: { file: 'inwang.jpg', label: '정선, 「인왕제색도」' },
 };
 
@@ -298,7 +298,7 @@ export const ROOMS = [
             type: 'hotspot',
             q: '김홍도는 이 그림에서 한 사람의 왼손과 오른손을 바꾸어 그렸어요. 그 사람의 손을 찾아 누르세요.',
             image: 'ssireum',
-            region: { x: 55, y: 62, w: 45, h: 38 },
+            region: { x: 64, y: 66, w: 36, h: 34 },
             hints: ['씨름꾼 말고 둘러앉은 구경꾼들을 살펴보세요.', '그림의 오른쪽 아래, 땅을 짚은 구경꾼의 손 모양을 보세요.'],
             fallback: {
               type: 'choice',
