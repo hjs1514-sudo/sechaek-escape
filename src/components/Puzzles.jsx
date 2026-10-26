@@ -164,7 +164,7 @@ export function Hotspot({ step, onResult, locked }) {
   return (
     <div className="hotspot">
       <div className="hotspot-wrap" onClick={tap}>
-        <img src={`sources/${meta.file}`} alt={meta.label} draggable={false} />
+        <img src={`sources/${meta.file}`} alt="그림 속 위치를 누르는 문제" draggable={false} />
         {mark && <span className={`hot-mark ${mark.hit ? 'right' : 'wrong'}`} style={{ left: `${mark.x}%`, top: `${mark.y}%` }} />}
       </div>
       <p className="howto">그림을 직접 눌러요. 크게 보려면 화면을 두 손가락으로 벌리세요.</p>
@@ -201,7 +201,7 @@ export function Jigsaw({ step, onResult, locked }) {
   return (
     <div className="jigsaw">
       {ok === false && <p className="notice">사료 그림이 아직 없어 번호 조각으로 맞춰요. 그림을 넣으면 실제 그림 조각이 나와요.</p>}
-      <div className={`jig-grid ${solved ? 'solved' : ''}`} style={{ gridTemplateColumns: `repeat(${n}, 1fr)`, aspectRatio: String(ratio) }}>
+      <div className={`jig-grid ${solved ? 'solved' : ''}`} style={{ gridTemplateColumns: `repeat(${n}, 1fr)`, aspectRatio: String(ratio), width: `min(100%, calc((100vh - 230px) * ${ratio}))` }}>
         {tiles.map((v, k) => {
           const cx = v % n, cy = Math.floor(v / n);
           const style = ok

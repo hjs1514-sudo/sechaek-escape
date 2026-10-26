@@ -72,7 +72,7 @@ export function SourceImage({ srcKey, caption, onClick, children }) {
           <img src={`sources/${meta.file}`} alt={meta.label} />
           {children}
         </div>
-        <figcaption>{caption || meta.label}</figcaption>
+        <figcaption>{caption || meta.label}{meta.credit && <small className="credit">{meta.credit}</small>}</figcaption>
       </figure>
     );
   }
@@ -91,7 +91,7 @@ export function SourceImage({ srcKey, caption, onClick, children }) {
 
 export function SourceCard({ s, zoom }) {
   if (s.type === 'image') {
-    return <SourceImage srcKey={s.src} caption={s.caption} onClick={() => zoom?.(s.src)} />;
+    return <SourceImage srcKey={s.src} caption={s.caption} onClick={() => zoom?.({ key: s.src, caption: s.caption })} />;
   }
   if (s.type === 'table') {
     return (
@@ -115,12 +115,12 @@ export function SourceCard({ s, zoom }) {
   );
 }
 
-export function Zoom({ srcKey, onClose }) {
+export function Zoom({ srcKey, caption, onClose }) {
   const meta = SOURCE_FILES[srcKey];
   return (
     <div className="zoom" onClick={onClose}>
-      <img src={`sources/${meta.file}`} alt={meta.label} onClick={(e) => e.stopPropagation()} />
-      <div className="zoom-cap">{meta.label} · 두 손가락으로 확대할 수 있어요 · 바깥을 누르면 닫혀요</div>
+      <img src={`sources/${meta.file}`} alt={caption || meta.label} onClick={(e) => e.stopPropagation()} />
+      <div className="zoom-cap">{caption || meta.label} · 두 손가락으로 확대할 수 있어요 · 바깥을 누르면 닫혀요</div>
     </div>
   );
 }

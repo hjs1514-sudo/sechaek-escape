@@ -4,7 +4,8 @@ import { useGame, useSettings, useNow, ensurePuzzle, fmtTime } from './lib/store
 import { GlossProvider, T, SunBar, SourceCard, Zoom, PinModal, StepWords } from './components/common.jsx';
 import { Step } from './components/Puzzles.jsx';
 import Teacher from './Teacher.jsx';
-import { RoomIcon } from './components/icons.jsx';
+import { RoomIcon, HomeIcon, LockIcon } from './components/icons.jsx';
+import { QrCard } from './components/QrCard.jsx';
 
 const roomDone = (game, r) => !!game.rooms[r.id]?.done;
 
@@ -17,7 +18,7 @@ export default function App() {
   }, []);
   return (
     <GlossProvider>
-      {hash.startsWith('#/teacher') ? <Teacher /> : <Game />}
+      {hash.startsWith('#/teacher') ? <Teacher /> : <Game key={hash === '#cover' ? 'cover' : 'game'} />}
     </GlossProvider>
   );
 }
@@ -25,7 +26,11 @@ export default function App() {
 function Game() {
   const [game, update, reset] = useGame();
   const [settings] = useSettings();
-  const [screen, setScreen] = useState(() => (game.startedAt ? 'map' : 'cover'));
+  const [screen, setScreen] = useState(() => {
+    if (location.hash === '#cover') { history.replaceState(null, '', location.pathname + location.search); return 'cover'; }
+    return game.startedAt ? 'map' : 'cover';
+  });
+  const [teacherPin, setTeacherPin] = useState(false);
   const [roomId, setRoomId] = useState(null);
   const [recordOf, setRecordOf] = useState(null);
   const now = useNow(1000);
@@ -41,14 +46,12 @@ function Game() {
   const keys = ROOMS.filter((r) => roomDone(game, r));
   const room = ROOMS.find((r) => r.id === roomId);
 
-  if (game.outcome === 'escaped') return <Escaped game={game} onRecord={setRecordOf} recordOf={recordOf} onReset={reset} />;
-  if (game.outcome === 'caught') return <Caught game={game} settings={settings} update={update} onRecord={setRecordOf} recordOf={recordOf} />;
-
+  const afterIntro = () => setScreen(game.startedAt ? 'map' : 'join');
   let body;
-  // 이미 입장한 모둠은 첫 화면에서 다시 들어가도 입장 화면을 건너뛰고 하던 곳(지도)으로 돌아간다
-  const enter = () => setScreen(game.startedAt ? 'map' : 'join');
-  if (screen === 'cover') body = <Cover onStart={() => setScreen('intro')} onSkip={enter} />;
-  else if (screen === 'intro') body = <Intro onDone={enter} />;
+  if (screen === 'cover') body = <Cover started={!!game.startedAt} team={game.team} onStart={() => setScreen('intro')} onSkip={afterIntro} />;
+  else if (screen === 'intro') body = <Intro started={!!game.startedAt} onDone={afterIntro} />;
+  else if (game.outcome === 'escaped') body = <Escaped game={game} onRecord={setRecordOf} recordOf={recordOf} onReset={() => { reset(); setScreen('cover'); }} />;
+  else if (game.outcome === 'caught') body = <Caught game={game} settings={settings} update={update} onRecord={setRecordOf} recordOf={recordOf} />;
   else if (screen === 'join') body = (
     <Join
       onJoin={(team, klass) => {
@@ -83,46 +86,66 @@ function Game() {
 
   return (
     <div className="app">
-      {running && screen !== 'intro' && screen !== 'cover' && (
+      {screen !== 'intro' && (
         <header className="topbar">
-          <div className="brand">1860 · 한양 세책점의 비밀</div>
-          <SunBar left={left} total={total} />
-          <div className="team">{game.team} <span className="keys">열쇠 {keys.length}/4</span></div>
-          <div className="top-actions">
-            <button className="btn ghost small" onClick={() => setScreen('cover')}>첫 화면으로</button>
-            <a className="btn ghost small" href="#/teacher">교사 화면으로</a>
-          </div>
+          <button className="brand" onClick={() => setScreen('cover')} title="첫 화면으로">1860 · 한양 세책점의 비밀</button>
+          {running ? <SunBar left={left} total={total} /> : <span className="topbar-space" />}
+          {game.startedAt && <div className="team">{game.team} <span className="keys">열쇠 {keys.length}/4</span></div>}
+          <nav className="topnav" aria-label="화면 이동">
+            <button className="nav-btn" onClick={() => setScreen('cover')} disabled={screen === 'cover'}>
+              <HomeIcon /> <span>첫 화면</span>
+            </button>
+            <button className="nav-btn" onClick={() => setTeacherPin(true)}>
+              <LockIcon /> <span>교사 화면</span>
+            </button>
+          </nav>
         </header>
       )}
       {body}
-      {recordOf && <RecordModal room={ROOMS.find((r) => r.id === recordOf)} onClose={() => setRecordOf(null)} />}
+      {recordOf && !game.outcome && <RecordModal room={ROOMS.find((r) => r.id === recordOf)} onClose={() => setRecordOf(null)} />}
+      {teacherPin && (
+        <PinModal title="교사 화면" pin={settings.pin} onCancel={() => setTeacherPin(false)}
+          onOk={() => { try { sessionStorage.setItem('sechaek-teacher', '1'); } catch { /* 저장 불가 환경 */ } location.hash = '#/teacher'; }}>
+          <p>교사 PIN을 넣어야 들어갈 수 있어요.</p>
+        </PinModal>
+      )}
     </div>
   );
 }
 
 // ---------- 표지 ----------
-function Cover({ onStart, onSkip }) {
+function Cover({ started, team, onStart, onSkip }) {
   return (
-    <section className="cover" style={{ backgroundImage: 'url(art/cover.webp)' }}>
+    <section className="cover" style={{ backgroundImage: 'url(art/library.webp)' }}>
       <div className="cover-shade" />
-      <div className="cover-band" style={{ backgroundImage: 'url(art/hanji_band.webp)' }}>
-        <div className="year">1 8 6 0</div>
-        <h1>한양 세책점의 비밀</h1>
-        <img className="cover-seal" src="art/seal.webp" alt="" />
-        <span className="cover-seal-text">脫出</span>
-        <p>조선 후기 문화 방탈출 · 해가 지기 전에 네 개의 상자를 열어라</p>
+      <img className="cover-book" src="art/book.webp" alt="" />
+      <div className="cover-title">
+        <h1 className="sr-only">1860, 한양 세책점의 비밀</h1>
+        <img className="signboard" src="art/signboard.webp" alt="1860 한양 세책점의 비밀 — 해가 지기 전에, 첫째 상자를 열어라" />
+        <p className="cover-sub">조선 후기 문화 방탈출 · 실학 · 서학과 동학 · 서민 문화 · 진경산수화</p>
       </div>
-      <div className="cover-actions">
-        <button className="btn big" onClick={onStart}>도입 영상 보기</button>
-        <button className="btn ghost" onClick={onSkip}>영상 건너뛰고 입장</button>
+      <div className="cover-bottom">
+        <div className="cover-actions">
+          {started ? (
+            <>
+              <button className="btn big" onClick={onSkip}>{team} 이어서 하기</button>
+              <button className="btn ghost" onClick={onStart}>도입 영상 다시 보기</button>
+            </>
+          ) : (
+            <>
+              <button className="btn big" onClick={onStart}>도입 영상 보기</button>
+              <button className="btn ghost" onClick={onSkip}>영상 건너뛰고 입장</button>
+            </>
+          )}
+        </div>
+        <QrCard />
       </div>
-      <a className="teacher-link" href="#/teacher">교사 화면</a>
     </section>
   );
 }
 
 // ---------- 도입 영상 ----------
-function Intro({ onDone }) {
+function Intro({ started, onDone }) {
   const [ended, setEnded] = useState(false);
   return (
     <section className="intro">
@@ -132,14 +155,14 @@ function Intro({ onDone }) {
           <button className="btn ghost skip" onClick={() => setEnded(true)}>건너뛰기</button>
         </>
       ) : (
-        <div className="intro-end" style={{ backgroundImage: 'url(art/intro_end.webp)' }}>
-          <div className="note-paper">
+        <div className="intro-end" style={{ backgroundImage: 'url(art/shop.webp)' }}>
+          <div className="note-paper" style={{ backgroundImage: 'url(art/paper.webp)' }}>
             <p>해가 지면 포도청이 금서를 찾으러 온다.</p>
             <p>내가 이 가게에 상자 네 개를 숨겨 두었다.</p>
             <p>네 개의 열쇠를 모두 모아야 대문이 열린다.</p>
             <p className="sign">— 세책점 주인</p>
           </div>
-          <button className="btn big" onClick={onDone}>모둠 입장하기</button>
+          <button className="btn big" onClick={onDone}>{started ? '세책점으로 돌아가기' : '모둠 입장하기'}</button>
         </div>
       )}
     </section>
@@ -151,8 +174,12 @@ function Join({ onJoin }) {
   const [team, setTeam] = useState('');
   const [klass, setKlass] = useState('');
   return (
-    <section className="join" style={{ backgroundImage: 'url(art/cover.webp)' }}>
-      <form className="join-card paper" onSubmit={(e) => { e.preventDefault(); if (team.trim()) onJoin(team.trim(), klass.trim()); }}>
+    <section className="join" style={{ backgroundImage: 'url(art/hanyang.webp)' }}>
+      <figure className="hero">
+        <img src="art/hero.webp" alt="" />
+        <figcaption>책장을 넘기자 1860년 한양에 서 있었다</figcaption>
+      </figure>
+      <form className="join-card paper-sheet" style={{ backgroundImage: 'url(art/paper.webp)' }} onSubmit={(e) => { e.preventDefault(); if (team.trim()) onJoin(team.trim(), klass.trim()); }}>
         <h2>세책점에 들어가기</h2>
         <label>모둠 이름<input value={team} onChange={(e) => setTeam(e.target.value)} placeholder="예: 3모둠" autoFocus maxLength={20} /></label>
         <label>반<input value={klass} onChange={(e) => setKlass(e.target.value)} placeholder="예: 2-3" maxLength={10} /></label>
@@ -164,13 +191,16 @@ function Join({ onJoin }) {
 }
 
 // ---------- 세책점 지도 ----------
-const SPOTS = { silhak: [20, 44], geumseo: [44, 30], jangteo: [79, 44], sansu: [58, 70] };
+const SPOTS = { silhak: [20, 48], geumseo: [43, 36], jangteo: [80, 48], sansu: [60, 70] };
 function MapScreen({ game, keys, onRoom, onGate, onRecord }) {
   const all = keys.length === 4;
   return (
     <section className="map" style={{ backgroundImage: 'url(art/map.webp)' }}>
       <div className="map-shade" />
-      <p className="map-guide">상자를 골라 들어가세요. 어떤 순서로 열어도 돼요.</p>
+      <div className="map-guide">
+        <img src="art/strip_clue.webp" alt="단서는 모두 이 상자들 안에 있다" />
+        <span>상자를 골라 들어가세요. 어떤 순서로 열어도 돼요.</span>
+      </div>
       {ROOMS.map((r) => {
         const done = roomDone(game, r);
         const solved = Object.values(game.rooms[r.id]?.puzzles || {}).filter((p) => p.done).length;
@@ -178,8 +208,7 @@ function MapScreen({ game, keys, onRoom, onGate, onRecord }) {
         return (
           <div key={r.id} className={`spot ${done ? 'done' : ''}`} style={{ left: `${x}%`, top: `${y}%` }}>
             <button className="chest" onClick={() => onRoom(r.id)}>
-              <img src={r.chest} alt="" />
-              <span className="chest-icon"><RoomIcon kind={r.icon} /></span>
+              <img src={done ? 'art/chest_open.webp' : r.chest} alt={`${r.name} 상자${done ? ' (열림)' : ''}`} />
             </button>
             <div className="spot-label">
               <small>{r.no}방</small>
@@ -247,11 +276,14 @@ function Room({ room, game, update, onBack, onDone }) {
   };
 
   const hints = step.hints || [];
+  const visual = step.type === 'hotspot' || step.type === 'jigsaw';
   return (
-    <section className="room" style={{ '--bg': `url(${room.bg})` }}>
-      <div className="room-bg" />
+    <section className="room">
+      {/* 배경 주소를 CSS 변수로 넘기면 빌드 후 assets/ 기준으로 풀려 그림이 안 나오므로 바로 지정 */}
+      <div className="room-bg" style={{ backgroundImage: `url(${room.bg})` }} />
       <div className="room-head">
         <button className="btn ghost small" onClick={onBack}>← 지도</button>
+        <img className="room-chest" src={room.chest} alt="" />
         <h2><span>{room.no}방</span> {room.name}</h2>
         <div className="tabs">
           {room.puzzles.map((p, i) => {
@@ -264,17 +296,25 @@ function Room({ room, game, update, onBack, onDone }) {
           })}
         </div>
       </div>
-      <div className="room-body">
+      <div className={`room-body ${visual ? 'visual' : ''}`}>
         <div className="sources">
-          {(step.type === 'jigsaw' || step.type === 'hotspot') && <div className="paper"><p className="paper-body">{step.type === 'jigsaw' ? '오른쪽의 그림 조각을 맞추세요.' : '오른쪽 그림을 자세히 살펴보세요.'}</p></div>}
-          {puzzle.sources.filter((s) => !(s.type === 'image' && (step.type === 'hotspot' || step.type === 'jigsaw') && s.src === step.image)).map((s, i) => <SourceCard key={i} s={s} zoom={setZoom} />)}
-          <p className="art-note">배경 그림은 이야기를 위한 상상 그림이에요. 사료는 종이 카드와 액자 속 자료예요.</p>
+          {visual ? (
+            <div className="visual-step">
+              <Step key={`${puzzle.id}-${stepIdx}`} step={step} onResult={onResult} locked={!!ps?.done} />
+            </div>
+          ) : (
+            <>
+              {puzzle.sources.map((s, i) => <SourceCard key={i} s={s} zoom={setZoom} />)}
+              <p className="art-note">배경 그림은 이야기를 위한 상상 그림이에요. 사료는 종이 카드와 액자 속 자료예요.</p>
+            </>
+          )}
         </div>
         <div className="question">
           <div className="step-count">질문 {stepIdx + 1} / {puzzle.steps.length}</div>
           <p className="q"><T>{step.q}</T></p>
           <StepWords step={step} />
-          <Step key={`${puzzle.id}-${stepIdx}`} step={step} onResult={onResult} locked={!!ps?.done} />
+          {!visual && <Step key={`${puzzle.id}-${stepIdx}`} step={step} onResult={onResult} locked={!!ps?.done} />}
+          {visual && puzzle.sources.filter((s) => s.type !== 'image').map((s, i) => <div key={i} className="side-source"><SourceCard s={s} /></div>)}
           {feedback && <div className={`feedback ${feedback.ok ? 'ok' : 'no'}`}>{feedback.text}</div>}
           {ps?.done && <div className="feedback ok">이 퍼즐은 풀었어요. 열쇠 조각 「{puzzle.piece}」</div>}
           {!ps?.done && hints.length > 0 && (
@@ -285,7 +325,7 @@ function Room({ room, game, update, onBack, onDone }) {
           )}
         </div>
       </div>
-      {zoom && <Zoom srcKey={zoom} onClose={() => setZoom(null)} />}
+      {zoom && <Zoom srcKey={zoom.key} caption={zoom.caption} onClose={() => setZoom(null)} />}
       {piece && (
         <div className="modal-back" onClick={afterPiece}>
           <div className="piece-pop">
@@ -303,7 +343,7 @@ function Room({ room, game, update, onBack, onDone }) {
 function RecordModal({ room, onClose }) {
   return (
     <div className="modal-back" onClick={onClose}>
-      <div className="record" onClick={(e) => e.stopPropagation()}>
+      <div className="record" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(art/paper.webp)' }}>
         <div className="record-head">세책점 주인의 기록 · {room.no}방 {room.name}</div>
         <p className="record-body"><T>{room.record}</T></p>
         <div className="record-key">
@@ -361,7 +401,7 @@ function Gate({ game, update, settings, onBack }) {
           </div>
         </div>
       ) : (
-        <div className="gate-panel paper">
+        <div className="gate-panel paper-sheet" style={{ backgroundImage: 'url(art/paper.webp)' }}>
           <h2>마지막 질문</h2>
           <p className="q"><T>{FINAL.question}</T></p>
           <div className="keys-recap">{ROOMS.map((r) => <span key={r.id}>{r.name} · 「{r.keyWord}」</span>)}</div>

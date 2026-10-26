@@ -7,6 +7,7 @@
 export const SETTINGS = {
   minutes: 30,          // 기본 제한 시간 (교사 화면에서 바꿀 수 있음)
   teacherPin: '1860',   // 기본 교사 PIN (교사 화면에서 바꿀 수 있음)
+  appUrl: '',           // 표지 QR 코드 주소. 비워 두면 지금 열린 주소를 씁니다 (예: 'https://sechaek-escape.pages.dev/')
 };
 
 export const GLOSSARY = {
@@ -46,11 +47,11 @@ export const GLOSSARY = {
 
 // 사료 그림: public/sources/ 에 아래 파일 이름으로 넣어 주세요.
 export const SOURCE_FILES = {
-  geojunggi: { file: 'geojunggi.jpg', label: '『화성성역의궤』 「거중기전도」' },
-  ssireum: { file: 'ssireum.jpg', label: '김홍도, 「씨름」' },
-  idealLandscape: { file: 'ideal_landscape.jpg', label: '중국풍 관념 산수화' },
-  geumgang: { file: 'geumgang.jpg', label: '정선, 「금강내산총도」' },
-  inwang: { file: 'inwang.jpg', label: '정선, 「인왕제색도」' },
+  geojunggi: { file: 'geojunggi.jpg', label: '『화성성역의궤』 「거중기전도」', credit: '국립중앙박물관 · 공공누리 제1유형' },
+  ssireum: { file: 'ssireum.jpg', label: '김홍도, 「씨름」 《단원 풍속도첩》', credit: '국립중앙박물관 · 공공누리 제1유형' },
+  idealLandscape: { file: 'ideal_landscape.jpg', label: '중국 산수화 (관념 산수)', credit: '' }, // 출처를 확인해 적어 주세요
+  geumgang: { file: 'geumgang.jpg', label: '정선, 「금강내산총도」 《신묘년 풍악도첩》', credit: '국립중앙박물관 · 공공누리 제1유형' },
+  inwang: { file: 'inwang.jpg', label: '정선, 「인왕제색도」', credit: '국립중앙박물관 · 공공누리 제1유형' },
 };
 
 // 퍼즐 단계 유형
@@ -298,7 +299,7 @@ export const ROOMS = [
             type: 'hotspot',
             q: '김홍도는 이 그림에서 한 사람의 왼손과 오른손을 바꾸어 그렸어요. 그 사람의 손을 찾아 누르세요.',
             image: 'ssireum',
-            region: { x: 64, y: 66, w: 36, h: 34 },
+            region: { x: 62, y: 68, w: 38, h: 32 },
             hints: ['씨름꾼 말고 둘러앉은 구경꾼들을 살펴보세요.', '그림의 오른쪽 아래, 땅을 짚은 구경꾼의 손 모양을 보세요.'],
             fallback: {
               type: 'choice',
@@ -425,7 +426,7 @@ export const ROOMS = [
             q: '두 그림 가운데 화가가 실제 산을 직접 보고 그 모습을 살려 그린 그림은?',
             options: ['그림 ㄱ', '그림 ㄴ'],
             answer: 1,
-            hints: ['봉우리 모양이 비슷비슷한지, 하나하나 다른지 보세요.', '그림 ㄴ은 금강산의 수많은 바위 봉우리를 한 화면에 담았습니다.'],
+            hints: ['봉우리 모양이 비슷비슷한지, 하나하나 다른지 보세요. 그림을 누르면 크게 볼 수 있어요.', '그림 ㄴ을 크게 보면 봉우리마다 실제 이름이 작은 글씨로 적혀 있어요.'],
           },
           {
             type: 'choice',
@@ -433,7 +434,7 @@ export const ROOMS = [
             options: [
               '색깔이 더 화려하다',
               '중국 그림의 본보기를 그대로 따랐다',
-              '실제 금강산의 뾰족한 바위 봉우리 모양을 살려 그렸다',
+              '실제 금강산의 뾰족한 바위 봉우리 모양을 살리고 봉우리 이름까지 적었다',
               '그림 크기가 더 크다',
             ],
             answer: 2,
@@ -474,14 +475,14 @@ export const ROOMS = [
             q: '이 그림은 어느 산을 그렸을까요? 그림 이름에 답이 있어요.',
             options: ['백두산', '인왕산', '한라산', '중국의 태산'],
             answer: 1,
-            hints: ['그림 이름 「○○제색도」에서 앞의 두 글자를 보세요.', '한양 서쪽, 경복궁 뒤편의 바위산입니다.'],
+            hints: ['그림 이름 「○○제색도」에서 앞의 두 글자를 보세요. 그림 오른쪽 위 글씨에도 적혀 있어요.', '한양 서쪽, 경복궁 뒤편의 바위산입니다.'],
           },
         ],
         piece: '인왕',
       },
     ],
     record:
-      '정선은 중국 그림의 본보기를 따르던 {{관념산수화}}에서 벗어나 우리 산천을 직접 보고 그렸다. 「금강전도」, 「인왕제색도」 같은 {{진경산수화}}는 우리 땅과 문화에 대한 자부심이 커진 조선 후기의 분위기를 보여 준다.',
+      '정선은 중국 그림의 본보기를 따르던 {{관념산수화}}에서 벗어나 우리 산천을 직접 보고 그렸다. 금강산 봉우리마다 이름을 적은 「금강내산총도」, 비 갠 인왕산을 그린 「인왕제색도」, 그리고 「금강전도」 같은 {{진경산수화}}는 우리 땅과 문화에 대한 자부심이 커진 조선 후기의 분위기를 보여 준다.',
   },
 ];
 

@@ -52,6 +52,11 @@ npm run dev
 
 GitHub 없이 바로 올리려면: `npm run build` 후 `npx wrangler pages deploy dist --project-name sechaek-escape`
 
+## 표지 QR 코드
+
+표지 오른쪽의 QR 코드는 지금 열린 주소를 자동으로 담습니다. 배포한 주소(예: `https://sechaek-escape.pages.dev/`)로 연 표지를 TV에 띄우면 학생이 태블릿 카메라로 찍어 바로 들어올 수 있어요.
+QR을 누르면 TV용으로 크게 보입니다. 다른 주소를 고정하고 싶으면 `src/data/game.js`의 `appUrl`에 적으세요.
+
 ## 다음 단계 (PRD 4단계)
 
 여러 모둠의 진행을 교사 TV 한 화면에서 보는 진행판은 Cloudflare Pages Functions + D1로 붙입니다.

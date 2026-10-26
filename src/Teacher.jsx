@@ -19,7 +19,11 @@ function SourceStatus({ k }) {
 export default function Teacher() {
   const [settings, setSettings] = useSettings();
   const [game, update, reset] = useGame();
-  const [authed, setAuthed] = useState(false);
+  const [authed, setAuthed] = useState(() => {
+    try { return sessionStorage.getItem('sechaek-teacher') === '1'; } catch { return false; }
+  });
+  const pass = () => { try { sessionStorage.setItem('sechaek-teacher', '1'); } catch { /* 저장 불가 환경 */ } setAuthed(true); };
+  const goHome = () => { location.hash = '#cover'; };
   const [minutes, setMinutes] = useState(settings.minutes);
   const [pin, setPin] = useState(settings.pin);
   const [saved, setSaved] = useState(false);
@@ -27,8 +31,8 @@ export default function Teacher() {
   if (!authed) {
     return (
       <div className="teacher-gate">
-        <PinModal title="교사 화면" pin={settings.pin} onOk={() => setAuthed(true)} onCancel={() => (location.hash = '')}>
-          <p>교사 PIN을 입력해야 들어갈 수 있어요.</p>
+        <PinModal title="교사 화면" pin={settings.pin} onOk={pass} onCancel={goHome}>
+          <p>처음 PIN은 1860이에요. 들어가서 바꿀 수 있어요.</p>
         </PinModal>
       </div>
     );
@@ -44,7 +48,11 @@ export default function Teacher() {
     <div className="teacher">
       <header className="teacher-head no-print">
         <h1>교사 화면 · 한양 세책점의 비밀</h1>
-        <a className="btn ghost small" href="#">← 게임으로</a>
+        <div className="row">
+          <button className="btn ghost small" onClick={goHome}>첫 화면으로</button>
+          <button className="btn ghost small" onClick={() => { location.hash = ''; }}>게임 화면으로</button>
+          <button className="btn ghost small" onClick={() => { try { sessionStorage.removeItem('sechaek-teacher'); } catch { /* */ } goHome(); }}>잠그고 나가기</button>
+        </div>
       </header>
 
       <section className="t-card no-print">
