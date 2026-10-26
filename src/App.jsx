@@ -6,6 +6,8 @@ import { Step } from './components/Puzzles.jsx';
 import Teacher from './Teacher.jsx';
 import { RoomIcon, HomeIcon, LockIcon } from './components/icons.jsx';
 import { QrCard } from './components/QrCard.jsx';
+import Board from './Board.jsx';
+import { getClass, newTeamId, useSync } from './lib/api.js';
 
 const roomDone = (game, r) => !!game.rooms[r.id]?.done;
 
@@ -18,7 +20,7 @@ export default function App() {
   }, []);
   return (
     <GlossProvider>
-      {hash.startsWith('#/teacher') ? <Teacher /> : <Game key={hash === '#cover' ? 'cover' : 'game'} />}
+      {hash.startsWith('#/teacher') ? <Teacher /> : hash.startsWith('#/board') ? <Board /> : <Game key={hash === '#cover' ? 'cover' : 'game'} />}
     </GlossProvider>
   );
 }
@@ -34,8 +36,9 @@ function Game() {
   const [roomId, setRoomId] = useState(null);
   const [recordOf, setRecordOf] = useState(null);
   const now = useNow(1000);
+  const sync = useSync(game, update);
 
-  const total = (settings.minutes + (game.addedMinutes || 0)) * 60000;
+  const total = ((game.minutes || settings.minutes) + (game.addedMinutes || 0)) * 60000;
   const left = game.endAt ? game.endAt - now : total;
   const running = game.startedAt && !game.outcome;
 
@@ -54,10 +57,12 @@ function Game() {
   else if (game.outcome === 'caught') body = <Caught game={game} settings={settings} update={update} onRecord={setRecordOf} recordOf={recordOf} />;
   else if (screen === 'join') body = (
     <Join
-      onJoin={(team, klass) => {
+      onJoin={(team, klass, cls) => {
         update((g) => {
           g.team = team; g.klass = klass; g.startedAt = Date.now();
-          g.endAt = Date.now() + settings.minutes * 60000;
+          g.minutes = cls?.minutes || settings.minutes;
+          g.endAt = Date.now() + g.minutes * 60000;
+          if (cls) { g.classCode = cls.code; g.teamId = newTeamId(); }
           return g;
         });
         setScreen('map');
@@ -90,7 +95,12 @@ function Game() {
         <header className="topbar">
           <button className="brand" onClick={() => setScreen('cover')} title="첫 화면으로">1860 · 한양 세책점의 비밀</button>
           {running ? <SunBar left={left} total={total} /> : <span className="topbar-space" />}
-          {game.startedAt && <div className="team">{game.team} <span className="keys">열쇠 {keys.length}/4</span></div>}
+          {game.startedAt && (
+            <div className="team">
+              {game.classCode && <i className={`sync-dot ${sync}`} title={sync === 'error' ? '진행판에 연결이 끊겼어요. 게임은 계속돼요.' : '진행판에 연결됨'} />}
+              {game.team} <span className="keys">열쇠 {keys.length}/4</span>
+            </div>
+          )}
           <nav className="topnav" aria-label="화면 이동">
             <button className="nav-btn" onClick={() => setScreen('cover')} disabled={screen === 'cover'}>
               <HomeIcon /> <span>첫 화면</span>
@@ -173,18 +183,42 @@ function Intro({ started, onDone }) {
 function Join({ onJoin }) {
   const [team, setTeam] = useState('');
   const [klass, setKlass] = useState('');
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!team.trim() || busy) return;
+    if (!code.trim()) { onJoin(team.trim(), klass.trim(), null); return; }
+    setBusy(true); setErr('');
+    try {
+      onJoin(team.trim(), klass.trim(), await getClass(code.trim()));
+    } catch (x) {
+      setErr(x.message);
+      setBusy(false);
+    }
+  };
   return (
     <section className="join" style={{ backgroundImage: 'url(art/hanyang.webp)' }}>
       <figure className="hero">
         <img src="art/hero.webp" alt="" />
         <figcaption>책장을 넘기자 1860년 한양에 서 있었다</figcaption>
       </figure>
-      <form className="join-card paper-sheet" style={{ backgroundImage: 'url(art/paper.webp)' }} onSubmit={(e) => { e.preventDefault(); if (team.trim()) onJoin(team.trim(), klass.trim()); }}>
+      <form className="join-card paper-sheet" style={{ backgroundImage: 'url(art/paper.webp)' }} onSubmit={submit}>
         <h2>세책점에 들어가기</h2>
         <label>모둠 이름<input value={team} onChange={(e) => setTeam(e.target.value)} placeholder="예: 3모둠" autoFocus maxLength={20} /></label>
         <label>반<input value={klass} onChange={(e) => setKlass(e.target.value)} placeholder="예: 2-3" maxLength={10} /></label>
+        <label>수업 코드 <small className="small-note">선생님이 알려 준 숫자 4자리 (없으면 비워 두기)</small>
+          <input value={code} onChange={(e) => { setCode(e.target.value.replace(/\D/g, '').slice(0, 4)); setErr(''); }} inputMode="numeric" placeholder="예: 4821" />
+        </label>
+        {err && (
+          <div className="join-err">
+            {err}
+            <button type="button" className="btn ghost dark small" onClick={() => onJoin(team.trim(), klass.trim(), null)}>코드 없이 시작하기</button>
+          </div>
+        )}
         <p className="small-note">이름이나 학번은 적지 않아요. 입장하면 해 지기까지 시간이 흐르기 시작합니다.</p>
-        <button className="btn big" disabled={!team.trim()}>입장</button>
+        <button className="btn big" disabled={!team.trim() || busy || (code && code.length < 4)}>{busy ? '확인 중…' : '입장'}</button>
       </form>
     </section>
   );
