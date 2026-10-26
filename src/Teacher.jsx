@@ -56,6 +56,13 @@ export default function Teacher() {
       </header>
 
       <section className="t-card no-print">
+        <h2>모둠 진행판</h2>
+        <p>여러 모둠 태블릿의 진행(퍼즐별 첫 답·오답·힌트·시간)을 한 화면에서 봐요. 수업을 열면 나오는 4자리 코드를 학생이 입장할 때 넣으면 돼요.</p>
+        <button className="btn" onClick={() => { location.hash = '#/board'; }}>모둠 진행판 열기</button>
+        <p className="small-note">역사교사 아카이브 주소로 열었을 때 작동해요.</p>
+      </section>
+
+      <section className="t-card no-print">
         <h2>설정</h2>
         <div className="t-form">
           <label>제한 시간(분)<input type="number" min="5" max="90" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} /></label>
@@ -63,7 +70,7 @@ export default function Teacher() {
           <button className="btn small" onClick={() => { setSettings({ minutes, pin: pin || '1860' }); setSaved(true); }}>저장</button>
           {saved && <span className="okc">저장했어요. 새로 입장하는 모둠부터 적용돼요.</span>}
         </div>
-        <p className="small-note">이 설정은 이 기기에만 저장돼요. 모둠 태블릿마다 한 번씩 저장해 주세요. 여러 기기를 한 화면에서 보는 진행판은 다음 단계(Cloudflare D1)에서 붙일 예정이에요.</p>
+        <p className="small-note">이 설정은 이 기기에만 저장돼요. 수업 코드로 들어온 모둠은 진행판에서 정한 제한 시간을 따라요.</p>
       </section>
 
       <section className="t-card print-area">
