@@ -45,6 +45,26 @@ export function QrCard() {
   );
 }
 
+// 상단 막대에 늘 보이는 작은 QR: 어느 화면에서든 눌러서 크게 띄울 수 있습니다
+export function QrMini() {
+  const url = appUrl();
+  const src = useQr(url, 160);
+  const [big, setBig] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* 복사 불가 환경 */ }
+  };
+  return (
+    <>
+      <button className="qr-mini" onClick={() => setBig(true)} aria-label="입장 QR 코드 크게 보기" title="눌러서 크게 보기">
+        {src ? <img src={src} alt="" /> : <span className="qr-mini-wait" />}
+        <span className="qr-mini-text">입장 QR</span>
+      </button>
+      {big && <QrBig url={url} onClose={() => setBig(false)} copy={copy} copied={copied} />}
+    </>
+  );
+}
+
 function QrBig({ url, onClose, copy, copied }) {
   const src = useQr(url, 900);
   useEffect(() => {

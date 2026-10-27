@@ -392,12 +392,19 @@ input, textarea { font: inherit; }
 .cover, .join, .gate, .ending, .intro-end { min-height: calc(100vh - var(--topbar)); }
 .map { min-height: calc(100vh - var(--topbar)); }
 .credit { display: block; font-size: .75rem; color: #a8987a; font-family: var(--sans); }
+/* 상단 막대의 작은 입장 QR (누르면 크게) */
+.qr-mini { display: inline-flex; align-items: center; gap: 8px; background: rgba(236, 226, 200, .08); border: 1px solid var(--line); color: var(--hanji); border-radius: 10px; padding: 3px 10px 3px 3px; cursor: zoom-in; font-size: .88rem; white-space: nowrap; flex-shrink: 0; }
+.qr-mini img, .qr-mini-wait { width: 44px; height: 44px; border-radius: 5px; display: block; background: #f4ecd6; }
+.qr-mini:hover { border-color: var(--lantern); color: var(--lantern); }
+.qr-mini:focus-visible { outline: 2px solid var(--lantern); outline-offset: 2px; }
 @media (max-width: 900px) {
   .topbar { flex-wrap: wrap; gap: 8px 12px; }
   .topbar .brand { display: none; }
   .topbar .sunbar { order: 3; flex-basis: 100%; }
 }
 @media (max-width: 600px) {
+  .qr-mini { padding-right: 3px; }
+  .qr-mini-text { display: none; }
   .nav-btn span { display: none; }
   .nav-btn { padding: 6px 10px; }
   .sunbar-label { display: none; }

@@ -5,6 +5,7 @@ import { ROOMS, FINAL, SETTINGS } from './data/game.js';
 import { fmtTime, useNow } from './lib/store.js';
 import { createClass, getClass, giveTime } from './lib/api.js';
 import { plain } from './components/common.jsx';
+import { QrMini } from './components/QrCard.jsx';
 
 const SAVE_KEY = 'sechaek-board-v1';
 const POLL_MS = 5000;
@@ -48,6 +49,7 @@ export default function Board() {
       <header className="board-head">
         <h1>모둠 진행판 · 한양 세책점의 비밀</h1>
         <div className="row">
+          <QrMini />
           {cls && <button className="btn ghost small" onClick={() => setCurrent(null)}>수업 목록</button>}
           <button className="btn ghost small" onClick={() => { location.hash = '#/teacher'; }}>교사 화면</button>
           <button className="btn ghost small" onClick={() => { location.hash = '#cover'; }}>첫 화면</button>

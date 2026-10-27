@@ -5,7 +5,7 @@ import { GlossProvider, T, SunBar, SourceCard, Zoom, PinModal, StepWords } from 
 import { Step } from './components/Puzzles.jsx';
 import Teacher from './Teacher.jsx';
 import { RoomIcon, HomeIcon, LockIcon, ClueIcon } from './components/icons.jsx';
-import { QrCard } from './components/QrCard.jsx';
+import { QrCard, QrMini } from './components/QrCard.jsx';
 import Board from './Board.jsx';
 import { getClass, newTeamId, useSync } from './lib/api.js';
 
@@ -125,6 +125,7 @@ function Game() {
               {game.team} <span className="keys">열쇠 {keys.length}/{keysNeeded}</span>
             </div>
           )}
+          <QrMini />
           <nav className="topnav" aria-label="화면 이동">
             <button className="nav-btn" onClick={() => setScreen('cover')} disabled={screen === 'cover'}>
               <HomeIcon /> <span>첫 화면</span>
