@@ -76,7 +76,7 @@ export default function Teacher() {
       <section className="t-card print-area">
         <h2>모둠 기록 — {game.team || '(입장 전)'} {game.klass && `· ${game.klass}반`}</h2>
         {game.startedAt && (
-          <p>시작 {new Date(game.startedAt).toLocaleTimeString('ko-KR')} · 결과 {game.outcome === 'escaped' ? `탈출 (${fmtTime(game.escapedAt - game.startedAt)})` : game.outcome === 'caught' ? '시간 초과' : '진행 중'}{game.addedMinutes ? ` · 추가 시간 ${game.addedMinutes}분` : ''}</p>
+          <p>시작 {new Date(game.startedAt).toLocaleTimeString('ko-KR')} · 결과 {game.outcome === 'escaped' ? `탈출 (${fmtTime(game.escapedAt - game.startedAt)})` : game.outcome === 'caught' ? '시간 초과' : game.outcome === 'arrested' ? '포졸에게 잡힘 (오답)' : '진행 중'}{game.addedMinutes ? ` · 추가 시간 ${game.addedMinutes}분` : ''}</p>
         )}
         <table className="t-table">
           <thead><tr><th>퍼즐</th><th>첫 답</th><th>오답</th><th>힌트</th><th>걸린 시간</th><th>상태</th></tr></thead>

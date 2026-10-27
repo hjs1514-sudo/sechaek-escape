@@ -5,6 +5,7 @@ import { ROOMS, FINAL, SETTINGS } from './data/game.js';
 import { fmtTime, useNow } from './lib/store.js';
 import { createClass, getClass, giveTime } from './lib/api.js';
 import { plain } from './components/common.jsx';
+import { QrMini } from './components/QrCard.jsx';
 
 const SAVE_KEY = 'sechaek-board-v1';
 const POLL_MS = 5000;
@@ -48,6 +49,7 @@ export default function Board() {
       <header className="board-head">
         <h1>모둠 진행판 · 한양 세책점의 비밀</h1>
         <div className="row">
+          <QrMini />
           {cls && <button className="btn ghost small" onClick={() => setCurrent(null)}>수업 목록</button>}
           <button className="btn ghost small" onClick={() => { location.hash = '#/teacher'; }}>교사 화면</button>
           <button className="btn ghost small" onClick={() => { location.hash = '#cover'; }}>첫 화면</button>
@@ -114,14 +116,14 @@ function summarize(t, now) {
   const wrong = ps.reduce((n, s) => n + (s?.wrong || 0), 0);
   const hints = ps.reduce((n, s) => n + (s?.hints || 0), 0);
   const solved = ps.filter((s) => s?.done).length;
-  const status = g.outcome === 'escaped' ? 'escaped' : g.outcome === 'caught' ? 'caught' : g.startedAt ? 'playing' : 'waiting';
+  const status = g.outcome === 'escaped' ? 'escaped' : g.outcome === 'caught' ? 'caught' : g.outcome === 'arrested' ? 'arrested' : g.startedAt ? 'playing' : 'waiting';
   const left = status === 'playing' && g.endAt ? g.endAt - now : null;
   const stale = status === 'playing' && now - t.updated_at > STALE_MS;
   const stuck = ps.filter((s) => s && !s.done && (s.wrong >= 3 || s.hints >= 2)).length;
   return { g, ps, keys, wrong, hints, solved, status, left, stale, stuck };
 }
 
-const STATUS_LABEL = { playing: '진행 중', escaped: '탈출', caught: '시간 초과', waiting: '입장 전' };
+const STATUS_LABEL = { playing: '진행 중', escaped: '탈출', caught: '시간 초과', arrested: '포졸에게 잡힘', waiting: '입장 전' };
 
 function ClassView({ cls, onForget }) {
   const [data, setData] = useState(null);
