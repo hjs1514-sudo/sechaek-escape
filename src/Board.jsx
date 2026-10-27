@@ -116,14 +116,14 @@ function summarize(t, now) {
   const wrong = ps.reduce((n, s) => n + (s?.wrong || 0), 0);
   const hints = ps.reduce((n, s) => n + (s?.hints || 0), 0);
   const solved = ps.filter((s) => s?.done).length;
-  const status = g.outcome === 'escaped' ? 'escaped' : g.outcome === 'caught' ? 'caught' : g.startedAt ? 'playing' : 'waiting';
+  const status = g.outcome === 'escaped' ? 'escaped' : g.outcome === 'caught' ? 'caught' : g.outcome === 'arrested' ? 'arrested' : g.startedAt ? 'playing' : 'waiting';
   const left = status === 'playing' && g.endAt ? g.endAt - now : null;
   const stale = status === 'playing' && now - t.updated_at > STALE_MS;
   const stuck = ps.filter((s) => s && !s.done && (s.wrong >= 3 || s.hints >= 2)).length;
   return { g, ps, keys, wrong, hints, solved, status, left, stale, stuck };
 }
 
-const STATUS_LABEL = { playing: '진행 중', escaped: '탈출', caught: '시간 초과', waiting: '입장 전' };
+const STATUS_LABEL = { playing: '진행 중', escaped: '탈출', caught: '시간 초과', arrested: '포졸에게 잡힘', waiting: '입장 전' };
 
 function ClassView({ cls, onForget }) {
   const [data, setData] = useState(null);

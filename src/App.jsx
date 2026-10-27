@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ROOMS, FINAL } from './data/game.js';
+import { ROOMS, FINAL, SETTINGS } from './data/game.js';
 import { useGame, useSettings, useNow, ensurePuzzle, fmtTime } from './lib/store.js';
 import { GlossProvider, T, SunBar, SourceCard, Zoom, PinModal, StepWords } from './components/common.jsx';
 import { Step } from './components/Puzzles.jsx';
@@ -64,6 +64,7 @@ function Game() {
   if (screen === 'cover') body = <Cover started={!!game.startedAt} team={game.team} onStart={() => setScreen('intro')} onSkip={afterIntro} />;
   else if (screen === 'intro') body = <Intro started={!!game.startedAt} onDone={afterIntro} />;
   else if (game.outcome === 'escaped') body = <Escaped game={game} onRecord={setRecordOf} recordOf={recordOf} onReset={() => { reset(); setScreen('cover'); }} />;
+  else if (game.outcome === 'arrested') body = <Arrested game={game} settings={settings} update={update} />;
   else if (game.outcome === 'caught') body = <Caught game={game} settings={settings} update={update} onRecord={setRecordOf} recordOf={recordOf} />;
   else if (screen === 'join') body = (
     <Join
@@ -377,14 +378,20 @@ function Room({ room, game, update, onBack, onDone, startPid = null, sceneMode =
     update((g) => {
       const p = ensurePuzzle(g, room.id, puzzle.id);
       if (first) p.firstTry[stepIdx] = { ok, answer: summary };
-      if (!ok) { p.wrong += 1; return g; }
+      if (!ok) {
+        p.wrong += 1;
+        p.miss = (p.miss || 0) + 1;
+        if (WRONG_LIMIT && p.miss >= WRONG_LIMIT) { g.outcome = 'arrested'; g.arrest = { room: room.id, puzzle: puzzle.id, at: Date.now() }; }
+        return g;
+      }
+      p.miss = 0;
       if (stepIdx + 1 < puzzle.steps.length) { p.step = stepIdx + 1; return g; }
       p.done = true; p.endAt = Date.now();
       const r = g.rooms[room.id];
       if (room.puzzles.every((q) => r.puzzles[q.id]?.done)) { r.done = true; r.doneAt = Date.now(); }
       return g;
     });
-    if (!ok) { setFeedback({ ok: false, text: '사료를 다시 살펴보세요. 막히면 힌트를 열어도 돼요.' }); return; }
+    if (!ok) { setFeedback({ ok: false, danger: true, text: dangerText((ps?.miss || 0) + 1) }); return; }
     if (stepIdx + 1 < puzzle.steps.length) { setFeedback({ ok: true, text: '맞았어요! 다음 질문으로 넘어가요.' }); return; }
     setPiece(puzzle.piece);
     setFeedback(null);
@@ -437,12 +444,15 @@ function Room({ room, game, update, onBack, onDone, startPid = null, sceneMode =
           )}
         </div>
         <div className="question">
-          <div className="step-count">질문 {stepIdx + 1} / {puzzle.steps.length}</div>
+          <div className="step-count">
+            질문 {stepIdx + 1} / {puzzle.steps.length}
+            {!ps?.done && WRONG_LIMIT > 0 && <Chances miss={ps?.miss || 0} />}
+          </div>
           <p className="q"><T>{step.q}</T></p>
           <StepWords step={step} />
           {!visual && <Step key={`${puzzle.id}-${stepIdx}`} step={step} onResult={onResult} locked={!!ps?.done} />}
           {visual && puzzle.sources.filter((s) => s.type !== 'image').map((s, i) => <div key={i} className="side-source"><SourceCard s={s} /></div>)}
-          {feedback && <div className={`feedback ${feedback.ok ? 'ok' : 'no'}`}>{feedback.text}</div>}
+          {feedback && <div key={feedback.danger ? `d${ps?.miss}` : 'f'} className={`feedback ${feedback.ok ? 'ok' : 'no'} ${feedback.danger ? 'danger' : ''}`}>{feedback.text}</div>}
           {ps?.done && <div className="feedback ok">이 퍼즐은 풀었어요. 열쇠 조각 「{puzzle.piece}」</div>}
           {!ps?.done && hints.length > 0 && (
             <div className="hints">
@@ -463,6 +473,27 @@ function Room({ room, game, update, onBack, onDone, startPid = null, sceneMode =
         </div>
       )}
     </section>
+  );
+}
+
+// ---------- 오답 경고 ----------
+const WRONG_LIMIT = SETTINGS.wrongLimit ?? 3;
+const DANGER = [
+  '어디선가 발소리가 들린다… 포졸이 세책점 골목으로 들어섰다!',
+  '횃불 빛이 창호지에 어른거린다! 포졸이 문 앞까지 왔다!',
+];
+function dangerText(miss) {
+  const left = WRONG_LIMIT - miss;
+  if (left <= 0) return '포졸이 문을 박차고 들어왔다!';
+  const msg = DANGER[Math.min(miss - 1, DANGER.length - 1)];
+  return left === 1 ? `${msg} 한 번만 더 틀리면 붙잡혀요.` : `${msg} 남은 기회 ${left}번. 사료를 다시 살펴보세요.`;
+}
+function Chances({ miss }) {
+  const left = Math.max(0, WRONG_LIMIT - miss);
+  return (
+    <span className={`chances ${left <= 1 ? 'last' : ''}`} title={`이 질문에서 남은 기회 ${left}번`}>
+      남은 기회 {Array.from({ length: WRONG_LIMIT }, (_, i) => <i key={i} className={i < left ? 'on' : ''} />)}
+    </span>
   );
 }
 
@@ -617,6 +648,39 @@ function Caught({ game, settings, update, onRecord, recordOf }) {
         </PinModal>
       )}
       {recordOf && <RecordModal room={ROOMS.find((r) => r.id === recordOf)} onClose={() => onRecord(null)} />}
+    </section>
+  );
+}
+
+function Arrested({ game, settings, update }) {
+  const [pin, setPin] = useState(false);
+  const p = ROOMS.flatMap((r) => r.puzzles).find((q) => q.id === game.arrest?.puzzle);
+  const retry = () => {
+    update((g) => {
+      const a = g.arrest;
+      const ps = a && g.rooms[a.room]?.puzzles?.[a.puzzle];
+      if (ps) ps.miss = 0;
+      g.outcome = null;
+      g.arrests = (g.arrests || 0) + 1;
+      return g;
+    });
+    setPin(false);
+  };
+  return (
+    <section className="ending caught arrested" style={{ backgroundImage: 'url(art/caught.webp)' }}>
+      <div className="ending-panel">
+        <h1>포졸들에게 붙잡혔다!</h1>
+        <p>"게 섰거라! 금서를 뒤지던 자들이 바로 너희로구나!"</p>
+        <p>{game.team}은(는) 어림짐작으로 답을 고르다 포도청으로 끌려갔다.{p ? ` (${p.id} ${p.title}에서 ${WRONG_LIMIT}번 틀림)` : ''}</p>
+        <Summary game={game} />
+        <p className="small-note">답은 찍는 것이 아니라 사료에서 찾는 것. 선생님께 다시 기회를 받으면 그 질문부터 이어서 할 수 있어요.</p>
+        <button className="btn" onClick={() => setPin(true)}>선생님: 다시 기회 주기</button>
+      </div>
+      {pin && (
+        <PinModal title="다시 기회 주기" pin={settings.pin} onCancel={() => setPin(false)} onOk={retry}>
+          <p>잡힌 질문의 기회가 다시 {WRONG_LIMIT}번으로 채워지고 하던 곳에서 이어집니다. 제한 시간은 그대로 흘러요.</p>
+        </PinModal>
+      )}
     </section>
   );
 }

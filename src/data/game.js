@@ -8,6 +8,7 @@ export const SETTINGS = {
   minutes: 30,          // 기본 제한 시간 (교사 화면에서 바꿀 수 있음)
   teacherPin: '1860',   // 기본 교사 PIN (교사 화면에서 바꿀 수 있음)
   appUrl: '',           // 표지 QR 코드 주소. 비워 두면 지금 열린 주소를 씁니다 (예: 'https://sechaek-escape.pages.dev/')
+  wrongLimit: 3,        // 한 질문에서 이만큼 틀리면 포졸에게 잡힙니다 (0이면 끔)
   apiBase: '/api/sechaek', // 모둠 진행판 서버 주소. 역사교사 아카이브 안에서 열 때 작동합니다
 };
 

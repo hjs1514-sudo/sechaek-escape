@@ -29,7 +29,7 @@ export const emptyGame = () => ({
   rooms: {},          // roomId -> { done, doneAt, puzzles: { pid -> {...} } }
   inserted: [],       // 대문에 꽂은 열쇠 roomId 목록
   final: { text: '', attempts: [], passed: false },
-  outcome: null,      // 'escaped' | 'caught' | null
+  outcome: null,      // 'escaped' | 'caught'(시간 초과) | 'arrested'(오답으로 잡힘) | null
   addedMinutes: 0,
   minutes: null,      // 이 모둠의 제한 시간(분). 수업 코드로 들어오면 교사가 정한 시간
   classCode: '',      // 모둠 진행판 수업 코드 (없으면 이 기기 안에서만)

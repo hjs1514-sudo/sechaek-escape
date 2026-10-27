@@ -146,6 +146,13 @@ input, textarea { font: inherit; }
 .feedback { margin-top: 14px; padding: 10px 14px; border-radius: 10px; font-weight: 700; }
 .feedback.ok { background: rgba(63, 125, 78, .25); color: #bfe3b8; }
 .feedback.no { background: rgba(178, 58, 42, .22); color: #ffb9a8; animation: shake .35s; }
+.feedback.danger { background: rgba(178, 58, 42, .38); border: 1px solid #c8442f; color: #ffd2c6; animation: shake .35s, alarm 1.2s ease-in-out .35s 2; }
+@keyframes alarm { 50% { background: rgba(214, 70, 40, .6); box-shadow: 0 0 18px rgba(255, 110, 60, .55); } }
+.chances { float: right; display: inline-flex; align-items: center; gap: 4px; font-size: .8rem; color: #c9bb9c; }
+.chances i { width: 11px; height: 11px; border-radius: 50%; background: rgba(236, 226, 200, .15); border: 1px solid var(--line); }
+.chances i.on { background: var(--lantern); border-color: var(--lantern); box-shadow: 0 0 6px rgba(240, 180, 80, .6); }
+.chances.last { color: #ff9c88; }
+.chances.last i.on { background: #ff6a4a; border-color: #ff6a4a; box-shadow: 0 0 8px rgba(255, 106, 74, .8); }
 @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
 .hints { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .hint { background: rgba(236, 226, 200, .08); border-left: 3px solid var(--lantern); padding: 8px 12px; border-radius: 0 8px 8px 0; font-size: .97rem; }
@@ -446,14 +453,14 @@ input, textarea { font: inherit; }
 .team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-bottom: 16px; }
 .team-card { background: var(--night-2); border: 1px solid var(--line); border-left: 5px solid var(--lantern); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
 .team-card.escaped { border-left-color: #8fd49c; }
-.team-card.caught { border-left-color: var(--seal); }
+.team-card.caught, .team-card.arrested { border-left-color: var(--seal); }
 .team-card.waiting { border-left-color: #6b6455; }
 .team-card.stale { opacity: .7; }
 .team-card header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .team-name { font-family: var(--serif); font-size: 1.25rem; }
 .pill { font-size: .8rem; font-weight: 700; border-radius: 12px; padding: 2px 10px; background: rgba(242, 181, 68, .18); color: var(--lantern); white-space: nowrap; }
 .pill.escaped { background: rgba(143, 212, 156, .18); color: #8fd49c; }
-.pill.caught { background: rgba(255, 156, 136, .16); color: #ff9c88; }
+.pill.caught, .pill.arrested { background: rgba(255, 156, 136, .16); color: #ff9c88; }
 .pill.waiting { background: rgba(255, 255, 255, .08); color: #9d917a; }
 .team-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; text-align: center; }
 .team-stats small { display: block; font-size: .75rem; color: #9d917a; }
