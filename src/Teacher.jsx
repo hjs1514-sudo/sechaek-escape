@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ROOMS, FINAL, SOURCE_FILES, STANDARDS } from './data/game.js';
 import { useGame, useSettings, fmtTime, useImageOk } from './lib/store.js';
-import { PinModal, plain } from './components/common.jsx';
+import { PinModal } from './components/common.jsx';
 import { ConfirmButton } from './App.jsx';
 
 function SourceStatus({ k }) {
@@ -94,7 +94,7 @@ export default function Teacher() {
           </tbody>
         </table>
         <h3>최종 질문</h3>
-        <p className="small-note">{plain(FINAL.question)}</p>
+        <p className="small-note">{FINAL.conclusion.map((c) => c.text).join(' ')}</p>
         {game.final.attempts.length === 0 && <p>아직 답을 내지 않았어요.</p>}
         {game.final.attempts.map((a, i) => (
           <div key={i} className="t-answer">

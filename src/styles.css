@@ -528,3 +528,18 @@ input, textarea { font: inherit; }
 .map.compact .spot:not(.secret) .spot-label { min-width: 0; padding: 6px 14px 8px; }
 .map.compact .spot:not(.secret) .spot-label strong { font-size: .95rem; }
 .map.compact .key-chip { font-size: .72rem; }
+
+/* ===== 5분 추가 요청 · 결론 · 선생님 알림 ===== */
+.time-req.pending { border-color: var(--lantern); color: var(--lantern); opacity: 1; }
+.conclusion { margin: 8px 0 16px; text-align: left; }
+.conclusion-line { margin: 0 0 10px; opacity: 0; transform: translateY(6px); transition: opacity .7s, transform .7s; font-family: var(--serif); font-weight: 700; font-size: clamp(1.1rem, 2.4vw, 1.45rem); color: var(--ink); }
+.conclusion-line.on { opacity: 1; transform: none; }
+.conclusion-line small { display: block; font-family: var(--sans); font-weight: 400; font-size: .8rem; color: #7a6a4c; }
+.feedback.wait { background: rgba(242, 181, 68, .18); color: #6b4c10; }
+.alerts { border: 2px solid var(--lantern); border-radius: 14px; padding: 14px 16px; margin: 14px 0; background: rgba(242, 181, 68, .1); animation: alert-in .4s; }
+.alerts h2 { margin: 0 0 10px; font-size: 1.1rem; color: var(--lantern); }
+.alert-item { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--line); }
+.alert-item:first-of-type { border-top: 0; }
+.alert-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.alert-item.final .alert-text span { color: #f4ecd6; }
+@keyframes alert-in { from { transform: translateY(-6px); opacity: 0; } }

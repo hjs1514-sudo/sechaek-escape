@@ -23,6 +23,7 @@ async function call(path, { method = 'GET', body, key } = {}) {
 export const createClass = (title, minutes) => call('/classes', { method: 'POST', body: { title, minutes } });
 export const getClass = (code, key) => call(`/classes/${encodeURIComponent(code)}`, { key });
 export const giveTime = (code, key, teamId, minutes) => call(`/classes/${encodeURIComponent(code)}`, { method: 'PATCH', key, body: { team_id: teamId, minutes } });
+export const judgeFinal = (code, key, teamId, pass, comment) => call(`/classes/${encodeURIComponent(code)}`, { method: 'PATCH', key, body: { team_id: teamId, verdict: { pass, comment } } });
 const pushProgress = (code, body) => call(`/classes/${encodeURIComponent(code)}/progress`, { method: 'POST', body });
 
 export const newTeamId = () => {
@@ -30,7 +31,7 @@ export const newTeamId = () => {
   return Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('');
 };
 
-/** 수업 코드로 들어온 모둠의 기록을 서버로 보내고, 교사가 진행판에서 준 시간을 받아 온다 */
+/** 수업 코드로 들어온 모둠의 기록을 서버로 보내고, 교사가 진행판에서 준 시간과 결론 판정을 받아 온다 */
 export function useSync(game, update) {
   const [status, setStatus] = useState('off'); // off | ok | error
   const latest = useRef(game);
@@ -53,6 +54,18 @@ export function useSync(game, update) {
           x.addedMinutes = (x.addedMinutes || 0) + add;
           x.endAt = Math.max(x.endAt || 0, Date.now()) + add * 60000;
           if (x.outcome === 'caught') x.outcome = null;
+          x.timeReq = null;
+          return x;
+        });
+      }
+      const v = r.verdict;
+      if (v && g.final?.submitted && v.at > g.final.submitted.at) {
+        update((x) => {
+          const sub = x.final.submitted;
+          if (!sub || v.at <= sub.at) return x;
+          x.final.attempts.push({ text: sub.text, pass: v.pass, comment: v.comment, at: v.at });
+          x.final.submitted = null;
+          if (v.pass) { x.final.passed = true; x.outcome = 'escaped'; x.escapedAt = v.at; }
           return x;
         });
       }
@@ -68,12 +81,14 @@ export function useSync(game, update) {
     return () => clearTimeout(t);
   }, [game, code]);
 
-  // 바뀐 게 없어도 15초마다 연결 알리기 (교사가 준 시간도 이때 받음)
+  // 바뀐 게 없어도 15초마다 연결 알리기 (교사가 준 시간도 이때 받음).
+  // 선생님 확인을 기다리는 중(시간 요청, 결론 제출)에는 4초마다 물어본다
+  const waiting = !!(game.timeReq || game.final?.submitted);
   useEffect(() => {
     if (!code) { setStatus('off'); return; }
-    const t = setInterval(() => send.current(), 15000);
+    const t = setInterval(() => send.current(), waiting ? 4000 : 15000);
     return () => clearInterval(t);
-  }, [code]);
+  }, [code, waiting]);
 
   return status;
 }

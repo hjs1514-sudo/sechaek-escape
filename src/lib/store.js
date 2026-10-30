@@ -28,7 +28,8 @@ export const emptyGame = () => ({
   endAt: null,
   rooms: {},          // roomId -> { done, doneAt, puzzles: { pid -> {...} } }
   inserted: [],       // 대문에 꽂은 열쇠 roomId 목록
-  final: { text: '', attempts: [], passed: false },
+  final: { text: '', attempts: [], passed: false, submitted: null }, // submitted: 교사 확인을 기다리는 결론 { text, at }
+  timeReq: null,      // 선생님께 보낸 5분 추가 요청 { at }
   outcome: null,      // 'escaped' | 'caught'(시간 초과) | 'arrested'(오답으로 잡힘) | null
   addedMinutes: 0,
   minutes: null,      // 이 모둠의 제한 시간(분). 수업 코드로 들어오면 교사가 정한 시간

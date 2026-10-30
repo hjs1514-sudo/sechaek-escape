@@ -1,10 +1,9 @@
 // 모둠 진행판: 여러 모둠 태블릿의 진행을 교사 화면(TV) 하나에서 봅니다.
 // 수업을 열면 4자리 코드가 나오고, 학생이 입장할 때 그 코드를 넣으면 이 화면에 모둠이 나타납니다.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ROOMS, FINAL, SETTINGS } from './data/game.js';
 import { fmtTime, useNow } from './lib/store.js';
-import { createClass, getClass, giveTime } from './lib/api.js';
-import { plain } from './components/common.jsx';
+import { createClass, getClass, giveTime, judgeFinal } from './lib/api.js';
 import { QrMini } from './components/QrCard.jsx';
 
 const SAVE_KEY = 'sechaek-board-v1';
@@ -120,7 +119,71 @@ function summarize(t, now) {
   const left = status === 'playing' && g.endAt ? g.endAt - now : null;
   const stale = status === 'playing' && now - t.updated_at > STALE_MS;
   const stuck = ps.filter((s) => s && !s.done && (s.wrong >= 3 || s.hints >= 2)).length;
-  return { g, ps, keys, wrong, hints, solved, status, left, stale, stuck };
+  // 선생님 확인이 필요한 것: 5분 추가 요청, 결론 제출 (이미 처리해 태블릿에 전달 중이면 빼기)
+  const granted = (t.extra_min || 0) > (g.remoteMinutes || 0);
+  const timeAsk = !!g.timeReq && !granted && (status === 'playing' || status === 'caught') ? g.timeReq : null;
+  const sub = g.final?.submitted;
+  const finalAsk = sub && status !== 'escaped' && !(t.verdict && t.verdict.at > sub.at) ? sub : null;
+  return { g, ps, keys, wrong, hints, solved, status, left, stale, stuck, timeAsk, finalAsk };
+}
+
+// ---------- 선생님 알림 ----------
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.18].forEach((d) => {
+      const o = ctx.createOscillator();
+      const v = ctx.createGain();
+      o.frequency.value = 880;
+      v.gain.setValueAtTime(0.15, ctx.currentTime + d);
+      v.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + d + 0.15);
+      o.connect(v).connect(ctx.destination);
+      o.start(ctx.currentTime + d);
+      o.stop(ctx.currentTime + d + 0.16);
+    });
+    setTimeout(() => ctx.close(), 600);
+  } catch { /* 소리를 못 내는 환경 */ }
+}
+
+function Alerts({ teams, onAdd, onJudge }) {
+  const items = teams.flatMap((t) => [
+    t.s.timeAsk && { kind: 'time', id: `time-${t.team_id}-${t.s.timeAsk.at}`, t, at: t.s.timeAsk.at },
+    t.s.finalAsk && { kind: 'final', id: `final-${t.team_id}-${t.s.finalAsk.at}`, t, at: t.s.finalAsk.at },
+  ].filter(Boolean)).sort((a, b) => a.at - b.at);
+  const [busy, setBusy] = useState({});
+  const seen = useRef(null);
+  useEffect(() => {
+    const ids = new Set(items.map((x) => x.id));
+    if (seen.current && [...ids].some((id) => !seen.current.has(id))) beep();
+    seen.current = ids;
+  });
+  if (!items.length) return null;
+  const act = async (id, fn) => { setBusy((b) => ({ ...b, [id]: true })); await fn(); setBusy((b) => ({ ...b, [id]: false })); };
+  return (
+    <section className="alerts" aria-live="polite">
+      <h2>선생님 확인이 필요해요 ({items.length})</h2>
+      {items.map(({ kind, id, t }) => (
+        <div key={id} className={`alert-item ${kind}`}>
+          <div className="alert-text">
+            <b>{t.team || '(이름 없음)'}{t.klass ? ` · ${t.klass}반` : ''}</b>
+            {kind === 'time'
+              ? <span>5분 추가를 요청했어요. {t.s.status === 'caught' ? '(시간 초과로 멈춤)' : t.s.left !== null ? `남은 시간 ${fmtTime(t.s.left)}` : ''}</span>
+              : <span>결론을 제출했어요: “{t.s.finalAsk.text}”</span>}
+          </div>
+          <div className="row">
+            {kind === 'time' ? (
+              <button className="btn small" disabled={busy[id]} onClick={() => act(id, () => onAdd(t.team_id))}>5분 추가하기</button>
+            ) : (
+              <>
+                <button className="btn ghost small" disabled={busy[id]} onClick={() => act(id, () => onJudge(t.team_id, false))}>다시 생각해 보기</button>
+                <button className="btn small" disabled={busy[id]} onClick={() => act(id, () => onJudge(t.team_id, true))}>통과 — 대문 열기</button>
+              </>
+            )}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
 }
 
 const STATUS_LABEL = { playing: '진행 중', escaped: '탈출', caught: '시간 초과', arrested: '포졸에게 잡힘', waiting: '입장 전' };
@@ -156,6 +219,21 @@ function ClassView({ cls, onForget }) {
     }
   };
 
+  const judge = async (teamId, pass) => {
+    let comment = '';
+    if (!pass) {
+      const c = prompt('모둠에게 보낼 한마디 (비워도 돼요)', '');
+      if (c === null) return;
+      comment = c;
+    }
+    try {
+      await judgeFinal(cls.code, cls.key, teamId, pass, comment);
+      load();
+    } catch (x) {
+      setErr(x.message);
+    }
+  };
+
   const copyLink = async () => {
     const url = `${location.origin}${location.pathname}#/board?c=${cls.code}&k=${encodeURIComponent(cls.key)}`;
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 3000); } catch { prompt('이 주소를 다른 기기에서 열어 주세요', url); }
@@ -184,6 +262,8 @@ function ClassView({ cls, onForget }) {
           </div>
         </div>
       </section>
+
+      <Alerts teams={teams} onAdd={addTime} onJudge={judge} />
 
       {data && teams.length === 0 && (
         <section className="t-card">
@@ -236,6 +316,8 @@ function TeamCard({ t, onOpen, onAdd }) {
         {!s.stale && s.stuck > 0 && <span className="warn small">막힌 퍼즐 {s.stuck}개</span>}
         {s.g.final?.attempts?.length > 0 && s.status !== 'escaped' && <span className="warn small">최종 답 {s.g.final.attempts.length}번 냄</span>}
         <span className="grow" />
+        {s.timeAsk && <span className="warn small">5분 요청</span>}
+        {s.finalAsk && <span className="warn small">결론 제출</span>}
         {(s.status === 'playing' || s.status === 'caught') && <button className="btn ghost small" onClick={onAdd}>+5분</button>}
         <button className="btn small" onClick={onOpen}>자세히</button>
       </footer>
@@ -325,9 +407,9 @@ function TeamDetail({ t, onClose }) {
             </tbody>
           </table>
         </div>
-        <h3>최종 질문</h3>
-        <p className="small-note">{plain(FINAL.question)}</p>
-        {!g.final?.attempts?.length && <p>아직 답을 내지 않았어요.</p>}
+        <h3>최종 결론</h3>
+        <p className="small-note">{FINAL.conclusion.map((c) => c.text).join(' ')}</p>
+        {!g.final?.attempts?.length && <p>{g.final?.submitted ? '결론을 내고 선생님 확인을 기다리는 중이에요.' : '아직 결론을 내지 않았어요.'}</p>}
         {g.final?.attempts?.map((a, i) => (
           <div key={i} className="t-answer">
             <b>{i + 1}차 · {a.pass ? '통과' : '다시 생각해 보기'}</b> {a.text}

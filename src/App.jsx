@@ -126,6 +126,7 @@ function Game() {
               {game.team} <span className="keys">열쇠 {keys.length}/{keysNeeded}</span>
             </div>
           )}
+          {running && <TimeRequest game={game} update={update} settings={settings} />}
           <QrMini />
           <nav className="topnav" aria-label="화면 이동">
             <button className="nav-btn" onClick={() => setScreen('cover')} disabled={screen === 'cover'}>
@@ -515,16 +516,33 @@ function RecordModal({ room, onClose }) {
   );
 }
 
-// ---------- 대문과 최종 질문 ----------
+// ---------- 대문과 최종 결론 ----------
+const CONCLUSION = FINAL.conclusion.map((c) => c.text).join(' ');
 function Gate({ game, update, settings, onBack }) {
   const inserted = game.inserted || [];
   const allIn = ROOMS.every((r) => inserted.includes(r.id));
-  const [text, setText] = useState(game.final.text);
+  const text = CONCLUSION;
   const [check, setCheck] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
   const [comment, setComment] = useState('');
+  const [shown, setShown] = useState(game.final.attempts.length || game.final.submitted ? FINAL.conclusion.length : 0);
   const last = game.final.attempts.at(-1);
+  const waiting = game.final.submitted;
+  const remote = !!game.classCode;
   const insert = (id) => update((g) => { if (!g.inserted.includes(id)) g.inserted.push(id); return g; });
+
+  // 열쇠를 다 꽂으면 결론이 한 구절씩 나타난다
+  useEffect(() => {
+    if (!allIn || shown >= FINAL.conclusion.length) return;
+    const t = setTimeout(() => setShown((n) => n + 1), shown === 0 ? 700 : 1300);
+    return () => clearTimeout(t);
+  }, [allIn, shown]);
+
+  // 수업 코드로 들어왔으면 진행판(교사 화면)으로 제출, 아니면 이 태블릿에서 선생님 PIN으로 확인
+  const submit = () => {
+    if (!remote) { setCheck(true); return; }
+    update((g) => { g.final.text = text; g.final.submitted = { text, at: Date.now() }; return g; });
+  };
 
   const decide = (pass) => {
     update((g) => {
@@ -560,27 +578,41 @@ function Gate({ game, update, settings, onBack }) {
         </div>
       ) : (
         <div className="gate-panel paper-sheet" style={{ backgroundImage: 'url(art/paper.webp)' }}>
-          <h2>마지막 질문</h2>
-          <p className="q"><T>{FINAL.question}</T></p>
+          <h2>다섯 열쇠가 말하는 결론</h2>
           <div className="keys-recap">{ROOMS.map((r) => <span key={r.id}>{r.name} · 「{r.keyWord}」</span>)}</div>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} placeholder="모둠이 함께 의논해서 써 주세요." />
-          {last && !last.pass && (
-            <div className="feedback no">선생님: 다시 생각해 보기{last.comment ? ` — ${last.comment}` : ''}</div>
+          <div className="conclusion">
+            {FINAL.conclusion.map((c, i) => (
+              <p key={i} className={`conclusion-line ${i < shown ? 'on' : ''}`}>
+                <span>{c.text}</span>
+                <small>{c.keys.map((k) => `「${k}」`).join(' ')}</small>
+              </p>
+            ))}
+          </div>
+          {shown >= FINAL.conclusion.length && (
+            waiting ? (
+              <div className="feedback wait">결론을 냈어요. 선생님 화면에서 확인을 기다리는 중…</div>
+            ) : (
+              <>
+                {last && !last.pass && (
+                  <div className="feedback no">선생님: 다시 생각해 보기{last.comment ? ` — ${last.comment}` : ''}</div>
+                )}
+                <p className="small-note">모둠이 함께 결론을 소리 내어 읽고, 맞다고 생각하면 제출하세요.</p>
+                <button className="btn big" onClick={submit}>결론 제출하기</button>
+              </>
+            )
           )}
-          <button className="btn big" disabled={text.trim().length < 10} onClick={() => setCheck(true)}>선생님 확인 받기</button>
         </div>
       )}
       {check && !unlocked && (
         <PinModal title="선생님 확인" pin={settings.pin} onOk={() => setUnlocked(true)} onCancel={() => setCheck(false)}>
-          <p>선생님이 PIN을 넣으면 모둠의 답과 확인 기준이 보여요.</p>
+          <p>선생님이 PIN을 넣으면 모둠의 결론을 확인할 수 있어요.</p>
         </PinModal>
       )}
       {check && unlocked && (
         <div className="modal-back">
           <div className="modal paper-dark">
-            <h3>{game.team}의 답</h3>
+            <h3>{game.team}의 결론</h3>
             <blockquote>{text}</blockquote>
-            <div className="guide"><b>확인 기준</b> {FINAL.teacherGuide}</div>
             <input placeholder="한마디 (다시 생각해 보기를 줄 때)" value={comment} onChange={(e) => setComment(e.target.value)} />
             <div className="row">
               <button className="btn ghost" onClick={() => decide(false)}>다시 생각해 보기</button>
@@ -639,7 +671,10 @@ function Caught({ game, settings, update, onRecord, recordOf }) {
           {opened.length === 0 && <span className="small-note">아직 연 상자가 없어요.</span>}
           {opened.map((r) => <button key={r.id} className="btn ghost small" onClick={() => onRecord(r.id)}>{r.name} 기록</button>)}
         </div>
-        <button className="btn" onClick={() => setPin(true)}>선생님: 5분 더 주기</button>
+        <div className="row center">
+          {game.classCode && <TimeRequest game={game} update={update} settings={settings} big />}
+          <button className={game.classCode ? 'btn ghost' : 'btn'} onClick={() => setPin(true)}>선생님: 5분 더 주기</button>
+        </div>
       </div>
       {pin && (
         <PinModal title="시간 더 주기" pin={settings.pin} onCancel={() => setPin(false)}
@@ -649,6 +684,32 @@ function Caught({ game, settings, update, onRecord, recordOf }) {
       )}
       {recordOf && <RecordModal room={ROOMS.find((r) => r.id === recordOf)} onClose={() => onRecord(null)} />}
     </section>
+  );
+}
+
+// ---------- 5분 추가 요청 ----------
+// 수업 코드로 들어왔으면 모둠 진행판(교사 화면)에 알림이 가고, 선생님이 누르면 5분이 더해진다.
+// 수업 코드 없이 하면 이 태블릿에서 선생님이 PIN을 넣어 바로 5분을 더한다
+function TimeRequest({ game, update, settings, big = false }) {
+  const [pin, setPin] = useState(false);
+  const pending = !!game.timeReq;
+  const ask = () => {
+    if (!game.classCode) { setPin(true); return; }
+    update((g) => { g.timeReq = { at: Date.now() }; return g; });
+  };
+  const cls = big ? 'btn' : `nav-btn time-req ${pending ? 'pending' : ''}`;
+  return (
+    <>
+      <button className={cls} onClick={ask} disabled={pending} title={pending ? '선생님 확인을 기다리는 중' : '선생님께 5분 더 달라고 요청'}>
+        <i aria-hidden="true">⏳</i> <span>{pending ? '5분 요청 보냄' : '5분 추가 요청'}</span>
+      </button>
+      {pin && (
+        <PinModal title="5분 추가" pin={settings.pin} onCancel={() => setPin(false)}
+          onOk={() => { update((g) => { g.outcome = g.outcome === 'caught' ? null : g.outcome; g.addedMinutes = (g.addedMinutes || 0) + 5; g.endAt = Math.max(g.endAt || 0, Date.now()) + 5 * 60000; return g; }); setPin(false); }}>
+          <p>선생님이 PIN을 넣으면 5분이 더해져요.</p>
+        </PinModal>
+      )}
+    </>
   );
 }
 
